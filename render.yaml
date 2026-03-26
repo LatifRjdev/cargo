@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: cargo-api
+    runtime: node
+    buildCommand: corepack enable && pnpm install && cd apps/api && npx prisma generate && npx prisma migrate deploy && pnpm run build
+    startCommand: node apps/api/dist/main.js
+    envVars:
+      - key: NODE_VERSION
+        value: 20
