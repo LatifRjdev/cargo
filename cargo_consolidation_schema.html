@@ -1,0 +1,289 @@
+
+<div id="erd" style="padding:8px 0"></div>
+<script type="module">
+import mermaid from 'https://esm.sh/mermaid@11/dist/mermaid.esm.min.mjs';
+const dark = matchMedia('(prefers-color-scheme: dark)').matches;
+await document.fonts.ready;
+mermaid.initialize({
+  startOnLoad: false,
+  theme: 'base',
+  fontFamily: '"Anthropic Sans", sans-serif',
+  themeVariables: {
+    darkMode: dark,
+    fontSize: '10px',
+    fontFamily: '"Anthropic Sans", sans-serif',
+    lineColor: dark ? '#9c9a92' : '#73726c',
+    textColor: dark ? '#c2c0b6' : '#3d3d3a',
+  },
+});
+const { svg } = await mermaid.render('erd-svg', `erDiagram
+  users ||--o{ parcels : "receives"
+  users ||--o{ consolidation_boxes : "requests"
+  users }o--|| warehouses : "assigned_warehouse"
+  users ||--o{ payments : "pays"
+  users ||--o{ notifications : "receives"
+  users }o--o| organizations : "belongs_to"
+  users ||--o{ audit_log : "performed_by"
+
+  warehouses ||--o{ parcels : "stores"
+  warehouses ||--o{ storage_cells : "has"
+  warehouses ||--o{ shipment_batches : "origin"
+  warehouses ||--o{ shipment_batches : "destination"
+
+  parcels }o--o| storage_cells : "placed_in"
+  parcels ||--o{ parcel_photos : "has"
+  parcels ||--o{ parcel_status_log : "tracks"
+  parcels }o--o| consolidation_boxes : "packed_into"
+
+  consolidation_boxes ||--o{ box_status_log : "tracks"
+  consolidation_boxes }o--o| shipment_batches : "shipped_in"
+  consolidation_boxes ||--o| payments : "paid_by"
+  consolidation_boxes }o--|| tariffs : "priced_by"
+
+  shipment_batches ||--o{ batch_status_log : "tracks"
+
+  organizations ||--o{ org_tariffs : "has"
+  tariffs ||--o{ org_tariffs : "overrides"
+
+  users {
+    uuid id PK
+    string client_code UK "CD-7842"
+    string phone UK
+    string full_name
+    string email
+    enum role "customer|worker|admin"
+    string telegram_chat_id
+    uuid warehouse_id FK "worker only"
+    uuid org_id FK
+    enum language "ru|tg"
+    boolean is_active
+    timestamp created_at
+  }
+
+  organizations {
+    uuid id PK
+    string name
+    string tax_id
+    decimal credit_limit
+    decimal current_debt
+    string contact_phone
+    timestamp created_at
+  }
+
+  warehouses {
+    uuid id PK
+    string name "Guangzhou|Urumqi|Dushanbe"
+    string city
+    string country
+    string full_address
+    string address_local "localized for customers"
+    string phone
+    enum type "origin|transit|destination"
+    boolean active
+  }
+
+  storage_cells {
+    uuid id PK
+    uuid warehouse_id FK
+    string code "A-03-12"
+    boolean occupied
+  }
+
+  parcels {
+    uuid id PK
+    string internal_code UK "auto-generated"
+    string marketplace_track "marketplace tracking"
+    uuid customer_id FK "nullable if unidentified"
+    uuid warehouse_id FK
+    uuid cell_id FK
+    uuid box_id FK
+    enum marketplace "taobao|1688|pinduoduo|poizon|other"
+    enum category "clothing|electronics|shoes|cosmetics|food|other"
+    string description
+    decimal weight_kg
+    decimal length_cm
+    decimal width_cm
+    decimal height_cm
+    decimal volumetric_weight_kg
+    enum status "pending|received|stored|boxing|shipped|delivered|rejected"
+    boolean fragile
+    boolean damaged
+    string damage_note
+    string customer_phone_on_parcel "for unidentified"
+    timestamp received_at
+    timestamp created_at
+  }
+
+  parcel_photos {
+    uuid id PK
+    uuid parcel_id FK
+    string url
+    enum type "intake|damage|custom"
+    timestamp created_at
+  }
+
+  parcel_status_log {
+    uuid id PK
+    uuid parcel_id FK
+    uuid changed_by FK
+    enum status
+    string comment
+    timestamp created_at
+  }
+
+  consolidation_boxes {
+    uuid id PK
+    string box_code UK "BX-20260325-0042"
+    uuid customer_id FK
+    uuid tariff_id FK
+    uuid batch_id FK
+    uuid warehouse_id FK "origin warehouse"
+    integer parcel_count
+    decimal total_weight_kg
+    decimal total_volumetric_kg
+    decimal billable_weight_kg
+    decimal calculated_price
+    decimal final_price
+    string price_currency
+    enum status "requested|packing|packed|in_transit|customs|arrived|ready|delivered|cancelled"
+    enum payment_status "unpaid|paid"
+    string customer_note
+    string shelf_location "at destination"
+    timestamp requested_at
+    timestamp packed_at
+    timestamp delivered_at
+  }
+
+  box_status_log {
+    uuid id PK
+    uuid box_id FK
+    uuid changed_by FK
+    enum status
+    string comment
+    string location
+    timestamp created_at
+  }
+
+  shipment_batches {
+    uuid id PK
+    string batch_code UK "SH-20260325-GZ-DU"
+    uuid origin_warehouse_id FK
+    uuid dest_warehouse_id FK
+    integer box_count
+    decimal total_weight_kg
+    enum status "loading|in_transit|customs|arrived|distributed"
+    string vehicle_info
+    timestamp departed_at
+    timestamp arrived_at
+    timestamp created_at
+  }
+
+  batch_status_log {
+    uuid id PK
+    uuid batch_id FK
+    uuid changed_by FK
+    enum status
+    string location
+    string comment
+    timestamp created_at
+  }
+
+  tariffs {
+    uuid id PK
+    uuid from_warehouse_id FK
+    uuid to_warehouse_id FK
+    string currency "USD"
+    decimal price_per_kg
+    decimal min_price
+    integer vol_divisor "default 6000"
+    integer transit_days_min
+    integer transit_days_max
+    decimal storage_free_days "default 30"
+    decimal storage_fee_per_day
+    boolean active
+  }
+
+  org_tariffs {
+    uuid id PK
+    uuid org_id FK
+    uuid tariff_id FK
+    decimal price_per_kg
+    decimal discount_pct
+  }
+
+  exchange_rates {
+    uuid id PK
+    string from_currency "USD"
+    string to_currency "TJS"
+    decimal rate
+    uuid updated_by FK
+    timestamp updated_at
+  }
+
+  payments {
+    uuid id PK
+    uuid box_id FK
+    uuid customer_id FK
+    uuid collected_by FK
+    enum method "cash|transfer|card"
+    decimal amount
+    string currency
+    decimal exchange_rate_used
+    enum status "pending|completed|refunded"
+    timestamp paid_at
+    timestamp created_at
+  }
+
+  notifications {
+    uuid id PK
+    uuid user_id FK
+    uuid box_id FK
+    uuid parcel_id FK
+    enum channel "telegram|sms|push"
+    enum event "parcel_received|parcel_damaged|parcel_rejected|box_packed|box_shipped|box_customs|box_arrived|box_ready|box_delivered|storage_warning|unclaimed_warning"
+    string message
+    enum status "sent|failed|pending"
+    timestamp sent_at
+  }
+
+  settings {
+    string key PK "company_name|logo_url|max_box_weight|free_storage_days|unclaimed_days|vol_divisor|..."
+    string value
+    timestamp updated_at
+  }
+
+  audit_log {
+    uuid id PK
+    uuid user_id FK
+    string action "parcel.intake|box.pack|payment.collect|..."
+    string entity_type "parcel|box|shipment|user"
+    uuid entity_id
+    jsonb details "before/after or metadata"
+    string ip_address
+    timestamp created_at
+  }
+`);
+document.getElementById('erd').innerHTML = svg;
+document.querySelectorAll('#erd svg .node').forEach(node => {
+  const firstPath = node.querySelector('path[d]');
+  if (!firstPath) return;
+  const d = firstPath.getAttribute('d');
+  const nums = d.match(/-?[\d.]+/g)?.map(Number);
+  if (!nums || nums.length < 8) return;
+  const xs = [nums[0],nums[2],nums[4],nums[6]];
+  const ys = [nums[1],nums[3],nums[5],nums[7]];
+  const x = Math.min(...xs), y = Math.min(...ys);
+  const w = Math.max(...xs)-x, h = Math.max(...ys)-y;
+  const rect = document.createElementNS('http://www.w3.org/2000/svg','rect');
+  rect.setAttribute('x',x); rect.setAttribute('y',y);
+  rect.setAttribute('width',w); rect.setAttribute('height',h);
+  rect.setAttribute('rx','8');
+  for(const a of ['fill','stroke','stroke-width','class','style']){
+    if(firstPath.hasAttribute(a)) rect.setAttribute(a,firstPath.getAttribute(a));
+  }
+  firstPath.replaceWith(rect);
+});
+document.querySelectorAll('#erd svg .row-rect-odd path, #erd svg .row-rect-even path').forEach(p=>{
+  p.setAttribute('stroke','none');
+});
+</script>

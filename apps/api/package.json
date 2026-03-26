@@ -1,0 +1,49 @@
+{
+  "name": "@cargo/api",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "build": "nest build",
+    "dev": "nest start --watch",
+    "start": "node dist/main",
+    "start:prod": "node dist/main",
+    "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix"
+  },
+  "dependencies": {
+    "@cargo/shared": "workspace:*",
+    "@nestjs/bull": "^11",
+    "@nestjs/common": "^11",
+    "@nestjs/config": "^4",
+    "@nestjs/core": "^11",
+    "@nestjs/jwt": "^11",
+    "@nestjs/passport": "^11",
+    "@nestjs/platform-express": "^11",
+    "@nestjs/schedule": "^6.1.1",
+    "@nestjs/swagger": "^11",
+    "@prisma/client": "^6",
+    "@types/pdfkit": "^0.17.5",
+    "bullmq": "^5",
+    "class-transformer": "^0.5",
+    "class-validator": "^0.14",
+    "passport": "^0.7",
+    "passport-jwt": "^4",
+    "pdfkit": "^0.18.0",
+    "qrcode": "^1",
+    "reflect-metadata": "^0.2",
+    "rxjs": "^7"
+  },
+  "devDependencies": {
+    "@nestjs/cli": "^11",
+    "@nestjs/schematics": "^11",
+    "@types/express": "^5.0.6",
+    "@types/node": "^22",
+    "@types/passport-jwt": "^4",
+    "@types/qrcode": "^1",
+    "prisma": "^6",
+    "ts-node": "^10",
+    "typescript": "^5"
+  },
+  "prisma": {
+    "seed": "ts-node prisma/seed.ts"
+  }
+}

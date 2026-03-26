@@ -1,0 +1,19 @@
+{
+  "name": "@cargo/bot",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "ts-node src/index.ts",
+    "build": "tsc"
+  },
+  "dependencies": {
+    "grammy": "^1.25.0",
+    "@cargo/shared": "workspace:*",
+    "@cargo/i18n": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0",
+    "ts-node": "^10.9.0",
+    "@types/node": "^20.11.0"
+  }
+}

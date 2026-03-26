@@ -1,0 +1,364 @@
+================================================================================
+  CARGO CONSOLIDATION SYSTEM — PROGRESS TRACKER
+  Platform: Web + Telegram Bot (no mobile app)
+================================================================================
+  Last updated: 2026-03-27
+
+  Legend:
+    [ ] — not started
+    [~] — in progress
+    [x] — done
+    [!] — blocked
+    [-] — skipped / deferred
+
+================================================================================
+  PHASE 0: PLANNING & DESIGN
+================================================================================
+
+  [x] 0.1  Define business flow (customer → parcel → box → delivery)
+  [x] 0.2  Identify user roles (customer, worker, admin, b2b)
+  [x] 0.3  Draft ER-schema (cargo_consolidation_schema.html) — 18 tables
+  [x] 0.4  Define tech stack (NestJS, Next.js, PostgreSQL, Prisma, grammY)
+  [x] 0.5  Write architecture document (architecture.md)
+  [x] 0.6  Write PRD v1.1 with all requirements (PRD.md)
+  [x] 0.7  Define API structure (~60 endpoints, 7 groups)
+  [x] 0.8  Define project folder structure (monorepo: api + web + bot)
+  [ ] 0.9  Design UI wireframes / mockups
+  [ ] 0.10 Finalize tariff rules with business owner
+  [ ] 0.11 Choose SMS OTP provider (Tajikistan-compatible)
+  [ ] 0.12 Choose VPS / hosting provider
+
+================================================================================
+  PHASE 1: MVP — CORE SYSTEM
+  Goal: registration → intake → consolidation → notifications
+================================================================================
+
+  --- 1A: Project Setup ---
+  [x] 1.1   Init monorepo (pnpm workspaces + turborepo)
+  [x] 1.2   Setup NestJS backend (apps/api)
+  [x] 1.3   Setup Prisma + PostgreSQL connection
+  [x] 1.4   Create Prisma schema (20 tables — 18 original + expenses + expense enums)
+  [x] 1.5   Run initial migration + seed data loaded
+  [x] 1.6   Setup Next.js frontend (apps/web) + Tailwind CSS
+  [x] 1.7   Setup Docker Compose (postgres, redis, minio, api, web)
+  [x] 1.8   Setup shared types package (packages/shared)
+  [x] 1.9   Setup i18n package (packages/i18n) — ru/tg skeleton
+  [x] 1.10  Seed data: warehouses (Guangzhou, Urumqi, Dushanbe)
+  [x] 1.11  Seed data: default tariffs + exchange rates
+  [x] 1.12  Setup MinIO / S3 bucket for photos (via Docker Compose)
+
+  --- 1B: Authentication & Users ---
+  [x] 1.13  API: POST /auth/register (phone → send OTP)
+  [x] 1.14  API: POST /auth/verify-otp (verify → create user → JWT)
+  [x] 1.15  API: POST /auth/login (phone → send OTP)
+  [x] 1.16  API: POST /auth/refresh (refresh JWT)
+  [x] 1.17  Generate unique client_code on registration (CD-XXXX)
+  [x] 1.18  Generate QR code from client_code (qrcode npm)
+  [x] 1.19  API: POST /auth/telegram-link (deep link)
+  [x] 1.20  JWT guard + RBAC (customer, worker, admin)
+  [x] 1.21  Warehouse scope guard (worker sees only their warehouse)
+  [x] 1.22  Web: registration page
+  [x] 1.23  Web: login page (phone + OTP)
+  [x] 1.24  Web: protected route layout (redirect if unauthenticated)
+  [x] 1.25  Web: role-based navigation (customer / worker / admin sidebars)
+
+  --- 1C: Customer Cabinet (Web) ---
+  [x] 1.26  API: GET /me/profile
+  [x] 1.27  API: PATCH /me/profile (name, email, language, home_warehouse)
+  [x] 1.28  API: GET /me/qr (returns QR image)
+  [x] 1.29  API: GET /me/qr/pdf (QR + instructions + addresses PDF)
+  [x] 1.30  Web: dashboard (counts: parcels by warehouse, boxes in transit, ready)
+  [x] 1.31  Web: "My QR Code" screen (display + download PDF)
+  [x] 1.32  Web: "Warehouse Addresses" screen (copy button, instructions)
+  [x] 1.33  API: GET /me/parcels (list with filters: status, warehouse, date)
+  [x] 1.34  Web: parcels list (cards/table, status filter, search)
+  [x] 1.35  Web: parcel detail page (photos, weight, dims, status log, damage info)
+  [x] 1.36  API: POST /me/parcels (add marketplace track number for waiting)
+  [x] 1.37  Web: "Add tracking number" form
+  [x] 1.38  API: GET /me/parcels/unidentified (parcels awaiting claim)
+  [x] 1.39  API: POST /me/parcels/:id/claim (claim unidentified parcel)
+  [x] 1.40  Web: "Awaiting claim" section with claim button
+  [x] 1.40a Web: Boxes list page + "Build Box" UI + preview + cancel
+  [x] 1.40b Web: Calculator page
+
+  --- 1D: Parcel Intake (Warehouse Worker Web — mobile-first) ---
+  [x] 1.41  API: POST /warehouse/parcels/intake
+             (client_code, marketplace, category, weight, dims, description, fragile)
+  [x] 1.42  API: POST /warehouse/parcels/intake/unidentified
+             (no client_code — photos, weight, phone from label)
+  [x] 1.43  API: POST /warehouse/parcels/:id/photos (upload to S3)
+  [x] 1.44  API: POST /warehouse/parcels/:id/reject (prohibited item + reason)
+  [x] 1.45  API: POST /warehouse/parcels/:id/assign (link unidentified → customer)
+  [x] 1.46  API: GET /warehouse/parcels (list, filters: status, customer, date)
+  [x] 1.47  API: GET /warehouse/parcels/unidentified (unidentified list)
+  [x] 1.48  Web: worker intake form (scan QR via camera / enter code)
+  [x] 1.49  Web: QR scanner component (browser camera, html5-qrcode)
+  [x] 1.50  Web: intake form steps (code → marketplace → photos → weight → dims → category)
+  [x] 1.51  Web: damage toggle (checkbox + photo + comment)
+  [x] 1.52  Web: reject button (prohibited item + reason select)
+  [x] 1.53  Web: unidentified parcel intake form
+  [x] 1.54  Web: unidentified parcels list + assign to customer
+  [x] 1.55  Web: parcels list for worker (filters, search)
+  [x] 1.56  Auto-assign storage cell on intake
+  [x] 1.57  Write audit_log on every intake/reject action
+  [x] 1.58  Trigger notification: "Parcel received at warehouse" (+ photo)
+  [x] 1.59  Trigger notification: "Parcel damaged" (+ damage photo)
+  [x] 1.60  Trigger notification: "Parcel rejected" (+ reason)
+
+  --- 1E: Consolidation ("Build Box") ---
+  [x] 1.61  API: POST /me/boxes (parcel_ids + customer_note)
+  [x] 1.62  Validation: parcels belong to customer
+  [x] 1.63  Validation: all parcels on same warehouse
+  [x] 1.64  Validation: total weight ≤ max_box_weight (from settings)
+  [x] 1.65  Validation: no damaged parcels without confirmation
+  [x] 1.66  Preliminary price calculation (sum weights × tariff)
+  [x] 1.67  API: DELETE /me/boxes/:id (cancel if status=requested)
+  [x] 1.68  Web: "Build Box" UI (select parcels → grouped by warehouse)
+  [x] 1.69  Web: preview (selected parcels, est. weight, est. price, note field)
+  [x] 1.70  Web: confirmation dialog (show price estimate)
+  [x] 1.71  Web: cancel box request button (if status=requested)
+  [x] 1.72  API: GET /warehouse/boxes/queue (packing requests for this warehouse)
+  [x] 1.73  Web: worker packing queue (with customer notes)
+  [x] 1.74  API: POST /warehouse/boxes/:id/pack
+             (final weight, dimensions → volumetric calc → price → confirm)
+  [x] 1.75  Web: worker packing form (weigh, measure, confirm)
+  [x] 1.76  Trigger notification: "Box packed — weight: X kg, price: $Y"
+  [x] 1.77  Write audit_log on pack action
+
+  --- 1F: Tariff Calculation ---
+  [x] 1.78  Tariff engine: actual weight vs volumetric (L×W×H / vol_divisor)
+  [x] 1.79  Billable weight = MAX(actual, volumetric)
+  [x] 1.80  Price = MAX(billable × rate_per_kg, min_price)
+  [x] 1.81  API: POST /api/public/calculate (public calculator)
+  [x] 1.82  Web: public price calculator page
+
+  --- 1G: Telegram Notifications ---
+  [ ] 1.83  Setup Telegram Bot (BotFather → token)
+  [x] 1.84  grammY bot skeleton (apps/bot)
+  [x] 1.85  /start command (register or link account via deep link)
+  [x] 1.86  Notification service (BullMQ queue → send Telegram message)
+  [x] 1.87  Notification templates (ru + tg)
+  [x] 1.88  Events: parcel_received, parcel_damaged, parcel_rejected, box_packed
+  [x] 1.89  Store notification log in DB
+  [x] 1.90  Retry logic (if Telegram API fails → re-queue)
+
+  --- 1H: Expenses & Profit (ADDED) ---
+  [x] 1.91  DB: expenses table (scope: BOX/BATCH/GENERAL, category, amount)
+  [x] 1.92  API: CRUD /admin/expenses
+  [x] 1.93  API: GET /admin/expenses/profit/boxes (profit per box)
+  [x] 1.94  API: GET /admin/expenses/profit/summary (aggregated report)
+  [x] 1.95  Net profit calc: revenue - direct expenses - batch share - general
+
+================================================================================
+  PHASE 2: LOGISTICS, DELIVERY & PAYMENT
+  Goal: shipments → tracking → pickup → COD payment
+================================================================================
+
+  --- 2A: Shipment Batches ---
+  [x] 2.1   API: POST /shipments (create batch, select boxes, route, vehicle)
+  [x] 2.2   API: GET /shipments (list with filters)
+  [x] 2.3   API: GET /shipments/:id (detail + boxes)
+  [x] 2.4   API: PATCH /shipments/:id/status (in_transit → customs → arrived)
+  [x] 2.5   API: POST /shipments/:id/boxes (add boxes to batch)
+  [x] 2.6   Web: create shipment form (select packed boxes → route → vehicle)
+  [x] 2.7   Web: shipment list page
+  [x] 2.8   Web: shipment detail page (boxes, timeline)
+  [x] 2.9   Auto-update all box statuses when batch status changes
+  [x] 2.10  Trigger notifications: box_shipped, box_customs, box_arrived
+  [x] 2.11  Write audit_log on shipment actions
+
+  --- 2B: Tracking ---
+  [x] 2.12  API: GET /me/boxes/:id (full tracking timeline)
+  [x] 2.13  Web: box tracking page (status timeline with dates + locations)
+  [x] 2.14  API: GET /api/public/track/:code (public tracking, no auth)
+  [x] 2.15  Web: public tracking page (enter code → see timeline)
+
+  --- 2C: Pickup & Payment (Dushanbe) ---
+  [x] 2.16  API: GET /pickup/pending (boxes ready for pickup)
+  [x] 2.17  API: GET /pickup/search?q= (search box by code or client)
+  [x] 2.18  API: POST /pickup/:boxId/pay (method, amount, currency)
+  [x] 2.19  API: POST /pickup/:boxId/deliver (mark as delivered)
+  [x] 2.20  Web: pickup worker screen (search → box details → pay → deliver)
+  [x] 2.21  Web: payment form (amount in tariff currency + converted amount)
+  [x] 2.22  Exchange rate lookup at payment time
+  [x] 2.23  Trigger notifications: box_ready, box_delivered
+  [x] 2.24  Write audit_log on payment + delivery
+
+  --- 2D: Currency Exchange Rates ---
+  [x] 2.25  API: GET /admin/exchange-rates
+  [x] 2.26  API: PUT /admin/exchange-rates (update rate)
+  [x] 2.27  Conversion util: convert(amount, from, to)
+  [x] 2.28  Display prices in customer's preferred currency
+
+  --- 2E: Warehouse Management ---
+  [x] 2.29  API: CRUD /warehouse/cells
+  [x] 2.30  Web: cell management (grid view, occupancy indicator)
+  [x] 2.31  Auto-free cells when parcels move to box
+  [x] 2.32  Storage days tracker (calculate days since received_at)
+  [x] 2.33  Cron job: check storage durations daily
+  [x] 2.34  Trigger notification: storage_warning (approaching paid period)
+  [x] 2.35  Trigger notification: unclaimed_warning (> 90 days)
+  [x] 2.36  Web: inventory page (all parcels on warehouse, filters, totals)
+
+  --- 2F: PDF Generation ---
+  [x] 2.37  Box label PDF (box_code QR, client name, route, weight)
+  [x] 2.38  API: GET /warehouse/boxes/:id/label
+  [x] 2.39  Shipment manifest PDF (all boxes, weights, route, vehicle)
+  [x] 2.40  API: GET /shipments/:id/manifest
+  [x] 2.41  Payment receipt PDF (client, box, amount, date)
+  [x] 2.42  API: GET /pickup/:boxId/receipt
+  [x] 2.43  QR code PDF with instructions
+  [x] 2.44  API: GET /me/qr/pdf
+
+================================================================================
+  PHASE 3: ADMIN PANEL & TELEGRAM BOT
+  Goal: full management, analytics, bot, i18n
+================================================================================
+
+  --- 3A: Admin Dashboard ---
+  [x] 3.1   API: GET /admin/dashboard (aggregated stats)
+  [x] 3.2   Web: dashboard widgets (today: intake, packed, shipped, revenue)
+  [x] 3.3   Web: totals widgets (parcels per warehouse, boxes in transit, pending pickup)
+  [x] 3.4   Web: charts (intake trend, revenue trend — week/month)
+  [x] 3.5   Web: alerts panel (unidentified parcels, unclaimed, unpaid)
+
+  --- 3B: Admin Global Search ---
+  [x] 3.6   API: GET /admin/search?q= (search across all entities)
+  [x] 3.7   Web: global search bar in admin header
+  [x] 3.8   Web: search results page (grouped by type: client, parcel, box, batch)
+
+  --- 3C: Admin — User Management ---
+  [x] 3.9   API: CRUD /admin/users
+  [x] 3.10  API: PATCH /admin/users/:id/role (assign role + warehouse)
+  [x] 3.11  API: PATCH /admin/users/:id/block (activate/deactivate)
+  [x] 3.12  Web: users list (filters: role, warehouse, active, search)
+  [x] 3.13  Web: user detail page (profile, parcels, boxes, payments)
+  [x] 3.14  Web: create worker form (name, phone, role, warehouse)
+
+  --- 3D: Admin — Tariffs & Rates ---
+  [x] 3.15  API: CRUD /admin/tariffs
+  [x] 3.16  Web: tariffs list (from → to, price/kg, status)
+  [x] 3.17  Web: tariff edit form
+  [x] 3.18  API: CRUD /admin/exchange-rates (already in 2D, wire to admin UI)
+  [x] 3.19  Web: exchange rates page (table, edit inline)
+
+  --- 3E: Admin — Warehouses & Settings ---
+  [x] 3.20  API: CRUD /admin/warehouses
+  [x] 3.21  Web: warehouse management (address, phone, type, active)
+  [x] 3.22  API: CRUD /admin/settings
+  [x] 3.23  Web: company settings page (name, logo, storage rules, limits)
+  [x] 3.24  API: CRUD /admin/prohibited-items
+  [x] 3.25  Web: prohibited items list (add/remove)
+
+  --- 3F: Admin — Reports ---
+  [x] 3.26  API: GET /admin/reports/revenue (filters: period, warehouse, route)
+  [x] 3.27  API: GET /admin/reports/parcels (filters: period, warehouse, marketplace)
+  [x] 3.28  API: GET /admin/reports/delivery-time (avg per route)
+  [x] 3.29  API: GET /admin/reports/debts (unpaid boxes, by client)
+  [x] 3.30  API: GET /admin/reports/marketplaces (parcel count by marketplace)
+  [x] 3.31  API: GET /admin/reports/categories (parcel count by category)
+  [x] 3.32  API: GET /admin/reports/storage (parcels > N days, fees)
+  [x] 3.33  API: GET /admin/reports/:type/export (Excel/CSV)
+  [x] 3.34  Web: revenue report page (table + chart, date picker)
+  [x] 3.35  Web: parcels report page
+  [x] 3.36  Web: delivery time report page
+  [x] 3.37  Web: debts report page
+  [x] 3.38  Web: marketplace stats page
+  [x] 3.39  Web: storage report page
+  [x] 3.40  Web: export button on every report (XLSX + CSV)
+
+  --- 3G: Admin — Actions ---
+  [x] 3.41  API: POST /admin/notifications/broadcast (message, target: all/warehouse/selected)
+  [x] 3.42  Web: broadcast notification form
+  [x] 3.43  API: PATCH /admin/boxes/:id/price (override final_price)
+  [x] 3.44  Web: price adjustment (on box detail page)
+  [x] 3.45  API: GET /admin/audit-log (filters: user, action, entity, date)
+  [x] 3.46  Web: audit log viewer (table, filters)
+
+  --- 3H: Admin — Organizations (B2B) ---
+  [x] 3.47  API: CRUD /admin/organizations
+  [x] 3.48  API: CRUD /admin/org-tariffs
+  [x] 3.49  Web: organizations list
+  [x] 3.50  Web: organization detail (members, tariffs, debt)
+  [x] 3.51  Web: org-tariff management
+  [x] 3.52  Credit limit logic (allow COD up to limit, block if exceeded)
+
+  --- 3I: Telegram Bot (Full) ---
+  [x] 3.53  Main menu (inline keyboard: Parcels | Boxes | QR | Addresses | Calculator)
+  [x] 3.54  /parcels — list parcels with inline "details" buttons
+  [x] 3.55  /boxes — list boxes with "track" buttons
+  [x] 3.56  /track <code> — track box timeline
+  [x] 3.57  /qr — send QR code as image
+  [x] 3.58  /address — warehouse addresses with "Copy" callback
+  [x] 3.59  /calc — calculator dialog (route → weight → result)
+  [x] 3.60  /language — switch ru/tg
+  [x] 3.61  /help — command reference + FAQ
+  [x] 3.62  Deep link for account linking (/start?link=TOKEN)
+
+  --- 3J: Localization (i18n) ---
+  [x] 3.63  Extract all UI strings to i18n files
+  [x] 3.64  Russian translations (complete)
+  [x] 3.65  Tajik translations (complete)
+  [x] 3.66  Next.js i18n routing setup ([locale])
+  [x] 3.67  Language switcher component (web)
+  [x] 3.68  Telegram bot messages in both languages
+  [x] 3.69  Notification templates in both languages
+
+================================================================================
+  PHASE 4: POLISH & PUBLIC
+  Goal: public-facing features, SEO, landing
+================================================================================
+
+  [x] 4.1   Public landing page (company info, calculator, tracking)
+  [x] 4.2   Public price calculator (no auth)
+  [x] 4.3   Public tracking by box code (no auth)
+  [x] 4.4   SEO optimization (Next.js SSR, meta tags)
+  [x] 4.5   Error pages (404, 500) with i18n
+  [x] 4.6   Loading states and skeleton screens
+  [x] 4.7   Toast notifications for actions
+  [x] 4.8   Form validation (client-side + server-side)
+  [x] 4.9   Image optimization (compression, thumbnails, lazy load)
+  [ ] 4.10  Performance audit (Lighthouse)
+
+================================================================================
+  PHASE 5: FUTURE ENHANCEMENTS
+================================================================================
+
+  [ ] 5.1   Customs declaration generator (PDF/XML)
+  [ ] 5.2   Marketplace API integration (auto-tracking from Taobao/1688)
+  [ ] 5.3   Multiple pickup points in Dushanbe
+  [ ] 5.4   SMS notifications (fallback when Telegram unavailable)
+  [ ] 5.5   Online payment (card acquiring)
+  [ ] 5.6   Mobile app (React Native / Expo)
+  [ ] 5.7   Customer referral program
+  [x] 5.8   Bulk import parcels (CSV/Excel for B2B)
+  [ ] 5.9   Advanced analytics (retention, LTV, cohorts)
+  [ ] 5.10  Horizontal scaling (Kubernetes)
+  [ ] 5.11  Offline mode for warehouse worker (sync when online)
+  [x] 5.12  Automated exchange rate updates (API integration)
+
+================================================================================
+  TOTAL TASKS
+================================================================================
+
+  Phase 0 (Planning):     12 tasks  — 8 done, 4 remaining
+  Phase 1 (MVP Core):     90 tasks
+  Phase 2 (Logistics):    44 tasks
+  Phase 3 (Admin+Bot):    69 tasks
+  Phase 4 (Polish):       10 tasks
+  Phase 5 (Future):       12 tasks
+  ────────────────────────────────
+  TOTAL:                 237 tasks
+
+================================================================================
+  NOTES
+================================================================================
+
+  - No mobile app — web is mobile-first (responsive), Telegram bot covers mobile use
+  - Worker panel is designed mobile-first (phones on warehouse floor)
+  - Prioritization: P0 = must have, P1 = should have, P2 = nice to have
+  - Phase 1 = minimum viable product (P0 tasks)
+  - Each task should be committed with a descriptive message
+  - Update this file after completing each task
+
+================================================================================

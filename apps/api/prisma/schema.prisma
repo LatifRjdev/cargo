@@ -1,0 +1,533 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Enums ───────────────────────────────────────────────────────────────────
+
+enum UserRole {
+  CUSTOMER
+  WAREHOUSE_WORKER
+  ADMIN
+}
+
+enum Language {
+  RU
+  TG
+}
+
+enum Marketplace {
+  TAOBAO
+  ALI_1688
+  PINDUODUO
+  POIZON
+  OTHER
+}
+
+enum ParcelCategory {
+  CLOTHING
+  ELECTRONICS
+  SHOES
+  COSMETICS
+  FOOD
+  HOUSEHOLD
+  OTHER
+}
+
+enum ParcelStatus {
+  WAITING        // customer added tracking, parcel not yet arrived
+  RECEIVED       // arrived at warehouse, intake done
+  STORED         // assigned to storage cell
+  IN_BOX         // included in a consolidation box
+  REJECTED       // prohibited item
+}
+
+enum BoxStatus {
+  REQUESTED      // customer requested consolidation
+  PACKING        // worker started packing
+  PACKED         // packed, weighed, priced
+  IN_TRANSIT     // shipped in a batch
+  CUSTOMS        // at customs
+  ARRIVED        // arrived at destination warehouse
+  READY          // on shelf, ready for pickup
+  DELIVERED      // picked up by customer
+  CANCELLED      // cancelled by customer
+}
+
+enum BatchStatus {
+  FORMING        // adding boxes
+  DEPARTED       // in transit
+  CUSTOMS        // at customs checkpoint
+  ARRIVED        // arrived at destination
+  COMPLETED      // all boxes distributed
+}
+
+enum PaymentMethod {
+  CASH
+  TRANSFER
+  CARD
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  REFUNDED
+}
+
+enum Currency {
+  USD
+  CNY
+  TJS
+  RUB
+}
+
+enum NotificationChannel {
+  TELEGRAM
+  SMS
+  WEB
+}
+
+enum NotificationStatus {
+  QUEUED
+  SENT
+  FAILED
+}
+
+enum WarehouseType {
+  ORIGIN       // Guangzhou — where parcels arrive from marketplaces
+  TRANSIT      // Urumqi — intermediate stop
+  DESTINATION  // Dushanbe — final pickup point
+}
+
+enum ExpenseCategory {
+  TRANSPORT      // доставка рейса (фура, контейнер)
+  CUSTOMS        // таможенные сборы и пошлины
+  PACKAGING      // упаковочные материалы
+  LABOR          // оплата работы (погрузка, упаковка)
+  WAREHOUSE_RENT // аренда склада
+  INSURANCE      // страховка груза
+  FUEL           // топливо
+  OTHER          // прочее
+}
+
+enum ExpenseScope {
+  BOX            // привязан к конкретной коробке
+  BATCH          // привязан к рейсу (делится на коробки)
+  GENERAL        // общий расход (распределяется по периоду)
+}
+
+// ─── 1. Users ────────────────────────────────────────────────────────────────
+
+model User {
+  id              String    @id @default(uuid()) @db.Uuid
+  phone           String    @unique
+  fullName        String?   @map("full_name")
+  email           String?
+  role            UserRole  @default(CUSTOMER)
+  clientCode      String?   @unique @map("client_code") // CD-XXXX
+  qrCodeUrl       String?   @map("qr_code_url")
+  telegramChatId  String?   @map("telegram_chat_id")
+  language        Language  @default(RU)
+  isActive        Boolean   @default(true) @map("is_active")
+
+  warehouseId     String?   @map("warehouse_id") @db.Uuid
+  warehouse       Warehouse? @relation("WorkerWarehouse", fields: [warehouseId], references: [id])
+
+  homeWarehouseId String?   @map("home_warehouse_id") @db.Uuid
+  homeWarehouse   Warehouse? @relation("CustomerHomeWarehouse", fields: [homeWarehouseId], references: [id])
+
+  organizationId  String?   @map("organization_id") @db.Uuid
+  organization    Organization? @relation(fields: [organizationId], references: [id])
+
+  parcels         Parcel[]
+  boxes           ConsolidationBox[]
+  payments        Payment[]        @relation("PaymentCustomer")
+  collectedPayments Payment[]     @relation("PaymentCollector")
+  notifications   Notification[]
+  expenses        Expense[]
+  auditLogs       AuditLog[]
+
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  @@map("users")
+}
+
+// ─── 2. Organizations (B2B) ──────────────────────────────────────────────────
+
+model Organization {
+  id            String   @id @default(uuid()) @db.Uuid
+  name          String
+  bin           String?  // business ID number
+  creditLimit   Decimal  @default(0) @map("credit_limit") @db.Decimal(12, 2)
+  currentDebt   Decimal  @default(0) @map("current_debt") @db.Decimal(12, 2)
+  contactPhone  String?  @map("contact_phone")
+  isActive      Boolean  @default(true) @map("is_active")
+
+  members       User[]
+  orgTariffs    OrgTariff[]
+
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  @@map("organizations")
+}
+
+// ─── 3. Warehouses ───────────────────────────────────────────────────────────
+
+model Warehouse {
+  id          String        @id @default(uuid()) @db.Uuid
+  name        String        // "Guangzhou", "Urumqi", "Dushanbe"
+  type        WarehouseType
+  address     String
+  phone       String?
+  isActive    Boolean       @default(true) @map("is_active")
+
+  workers     User[]        @relation("WorkerWarehouse")
+  customers   User[]        @relation("CustomerHomeWarehouse")
+  cells       StorageCell[]
+  parcels     Parcel[]
+  boxes       ConsolidationBox[]
+
+  tariffsFrom Tariff[]      @relation("TariffOrigin")
+  tariffsTo   Tariff[]      @relation("TariffDestination")
+
+  createdAt   DateTime      @default(now()) @map("created_at")
+  updatedAt   DateTime      @updatedAt @map("updated_at")
+
+  @@map("warehouses")
+}
+
+// ─── 4. Storage Cells ────────────────────────────────────────────────────────
+
+model StorageCell {
+  id          String    @id @default(uuid()) @db.Uuid
+  warehouseId String    @map("warehouse_id") @db.Uuid
+  warehouse   Warehouse @relation(fields: [warehouseId], references: [id])
+  code        String    // e.g. "A-03-12"
+  isOccupied  Boolean   @default(false) @map("is_occupied")
+
+  parcels     Parcel[]
+
+  @@unique([warehouseId, code])
+  @@map("storage_cells")
+}
+
+// ─── 5. Parcels ──────────────────────────────────────────────────────────────
+
+model Parcel {
+  id              String         @id @default(uuid()) @db.Uuid
+  trackingNumber  String?        @map("tracking_number") // marketplace tracking
+  marketplace     Marketplace?
+  category        ParcelCategory?
+  description     String?
+  weightKg        Decimal?       @map("weight_kg") @db.Decimal(8, 3)
+  lengthCm        Decimal?       @map("length_cm") @db.Decimal(8, 2)
+  widthCm         Decimal?       @map("width_cm") @db.Decimal(8, 2)
+  heightCm        Decimal?       @map("height_cm") @db.Decimal(8, 2)
+  volumetricWeight Decimal?      @map("volumetric_weight") @db.Decimal(8, 3)
+  isFragile       Boolean        @default(false) @map("is_fragile")
+  isDamaged       Boolean        @default(false) @map("is_damaged")
+  damageDescription String?      @map("damage_description")
+  isUnidentified  Boolean        @default(false) @map("is_unidentified")
+  phoneOnLabel    String?        @map("phone_on_label") // for unidentified parcels
+  status          ParcelStatus   @default(RECEIVED)
+  rejectReason    String?        @map("reject_reason")
+
+  customerId      String?        @map("customer_id") @db.Uuid
+  customer        User?          @relation(fields: [customerId], references: [id])
+
+  warehouseId     String         @map("warehouse_id") @db.Uuid
+  warehouse       Warehouse      @relation(fields: [warehouseId], references: [id])
+
+  cellId          String?        @map("cell_id") @db.Uuid
+  cell            StorageCell?   @relation(fields: [cellId], references: [id])
+
+  boxId           String?        @map("box_id") @db.Uuid
+  box             ConsolidationBox? @relation(fields: [boxId], references: [id])
+
+  photos          ParcelPhoto[]
+  statusLog       ParcelStatusLog[]
+
+  receivedAt      DateTime?      @map("received_at")
+  createdAt       DateTime       @default(now()) @map("created_at")
+  updatedAt       DateTime       @updatedAt @map("updated_at")
+
+  @@map("parcels")
+}
+
+// ─── 6. Parcel Photos ────────────────────────────────────────────────────────
+
+model ParcelPhoto {
+  id        String   @id @default(uuid()) @db.Uuid
+  parcelId  String   @map("parcel_id") @db.Uuid
+  parcel    Parcel   @relation(fields: [parcelId], references: [id], onDelete: Cascade)
+  url       String
+  type      String   @default("intake") // intake, damage, custom
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("parcel_photos")
+}
+
+// ─── 7. Parcel Status Log ────────────────────────────────────────────────────
+
+model ParcelStatusLog {
+  id        String       @id @default(uuid()) @db.Uuid
+  parcelId  String       @map("parcel_id") @db.Uuid
+  parcel    Parcel       @relation(fields: [parcelId], references: [id], onDelete: Cascade)
+  status    ParcelStatus
+  comment   String?
+  changedBy String?      @map("changed_by") @db.Uuid
+  createdAt DateTime     @default(now()) @map("created_at")
+
+  @@map("parcel_status_log")
+}
+
+// ─── 8. Consolidation Boxes ──────────────────────────────────────────────────
+
+model ConsolidationBox {
+  id               String    @id @default(uuid()) @db.Uuid
+  boxCode          String    @unique @map("box_code") // auto-generated
+  customerId       String    @map("customer_id") @db.Uuid
+  customer         User      @relation(fields: [customerId], references: [id])
+  warehouseId      String    @map("warehouse_id") @db.Uuid
+  warehouse        Warehouse @relation(fields: [warehouseId], references: [id])
+  customerNote     String?   @map("customer_note")
+
+  status           BoxStatus @default(REQUESTED)
+
+  // Weights & dimensions (filled by worker on packing)
+  weightKg         Decimal?  @map("weight_kg") @db.Decimal(8, 3)
+  lengthCm         Decimal?  @map("length_cm") @db.Decimal(8, 2)
+  widthCm          Decimal?  @map("width_cm") @db.Decimal(8, 2)
+  heightCm         Decimal?  @map("height_cm") @db.Decimal(8, 2)
+  volumetricWeight Decimal?  @map("volumetric_weight") @db.Decimal(8, 3)
+  billableWeight   Decimal?  @map("billable_weight") @db.Decimal(8, 3)
+
+  // Pricing
+  estimatedPrice   Decimal?  @map("estimated_price") @db.Decimal(12, 2)
+  finalPrice       Decimal?  @map("final_price") @db.Decimal(12, 2)
+  currency         Currency  @default(USD)
+
+  shelfLocation    String?   @map("shelf_location") // at destination warehouse
+
+  batchId          String?   @map("batch_id") @db.Uuid
+  batch            ShipmentBatch? @relation(fields: [batchId], references: [id])
+
+  parcels          Parcel[]
+  statusLog        BoxStatusLog[]
+  payment          Payment?
+  expenses         Expense[] @relation("BoxExpenses")
+
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+
+  @@map("consolidation_boxes")
+}
+
+// ─── 9. Box Status Log ───────────────────────────────────────────────────────
+
+model BoxStatusLog {
+  id        String    @id @default(uuid()) @db.Uuid
+  boxId     String    @map("box_id") @db.Uuid
+  box       ConsolidationBox @relation(fields: [boxId], references: [id], onDelete: Cascade)
+  status    BoxStatus
+  comment   String?
+  changedBy String?   @map("changed_by") @db.Uuid
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  @@map("box_status_log")
+}
+
+// ─── 10. Shipment Batches ────────────────────────────────────────────────────
+
+model ShipmentBatch {
+  id            String      @id @default(uuid()) @db.Uuid
+  batchCode     String      @unique @map("batch_code")
+  status        BatchStatus @default(FORMING)
+  route         String      // e.g. "Guangzhou → Urumqi → Dushanbe"
+  vehicleNumber String?     @map("vehicle_number")
+  totalBoxes    Int         @default(0) @map("total_boxes")
+  totalWeight   Decimal?    @map("total_weight") @db.Decimal(10, 3)
+
+  boxes         ConsolidationBox[]
+  statusLog     BatchStatusLog[]
+  expenses      Expense[]   @relation("BatchExpenses")
+
+  departedAt    DateTime?   @map("departed_at")
+  arrivedAt     DateTime?   @map("arrived_at")
+  createdAt     DateTime    @default(now()) @map("created_at")
+  updatedAt     DateTime    @updatedAt @map("updated_at")
+
+  @@map("shipment_batches")
+}
+
+// ─── 11. Batch Status Log ────────────────────────────────────────────────────
+
+model BatchStatusLog {
+  id        String       @id @default(uuid()) @db.Uuid
+  batchId   String       @map("batch_id") @db.Uuid
+  batch     ShipmentBatch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  status    BatchStatus
+  comment   String?
+  changedBy String?      @map("changed_by") @db.Uuid
+  createdAt DateTime     @default(now()) @map("created_at")
+
+  @@map("batch_status_log")
+}
+
+// ─── 12. Tariffs ─────────────────────────────────────────────────────────────
+
+model Tariff {
+  id              String    @id @default(uuid()) @db.Uuid
+  originId        String    @map("origin_id") @db.Uuid
+  origin          Warehouse @relation("TariffOrigin", fields: [originId], references: [id])
+  destinationId   String    @map("destination_id") @db.Uuid
+  destination     Warehouse @relation("TariffDestination", fields: [destinationId], references: [id])
+  currency        Currency  @default(USD)
+  ratePerKg       Decimal   @map("rate_per_kg") @db.Decimal(8, 2)
+  minPrice        Decimal   @map("min_price") @db.Decimal(8, 2)
+  volDivisor      Int       @default(6000) @map("vol_divisor")
+  freeStorageDays Int       @default(30) @map("free_storage_days")
+  storageFeePerDay Decimal  @default(0) @map("storage_fee_per_day") @db.Decimal(8, 2)
+  isActive        Boolean   @default(true) @map("is_active")
+
+  orgTariffs      OrgTariff[]
+
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  @@unique([originId, destinationId])
+  @@map("tariffs")
+}
+
+// ─── 13. Org Tariffs (B2B overrides) ─────────────────────────────────────────
+
+model OrgTariff {
+  id             String       @id @default(uuid()) @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  tariffId       String       @map("tariff_id") @db.Uuid
+  tariff         Tariff       @relation(fields: [tariffId], references: [id])
+  ratePerKg      Decimal?     @map("rate_per_kg") @db.Decimal(8, 2)
+  discountPct    Decimal?     @map("discount_pct") @db.Decimal(5, 2)
+
+  @@unique([organizationId, tariffId])
+  @@map("org_tariffs")
+}
+
+// ─── 14. Exchange Rates ──────────────────────────────────────────────────────
+
+model ExchangeRate {
+  id           String   @id @default(uuid()) @db.Uuid
+  fromCurrency Currency @map("from_currency")
+  toCurrency   Currency @map("to_currency")
+  rate         Decimal  @db.Decimal(12, 6)
+  updatedBy    String?  @map("updated_by") @db.Uuid
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@unique([fromCurrency, toCurrency])
+  @@map("exchange_rates")
+}
+
+// ─── 15. Payments ────────────────────────────────────────────────────────────
+
+model Payment {
+  id             String        @id @default(uuid()) @db.Uuid
+  boxId          String        @unique @map("box_id") @db.Uuid
+  box            ConsolidationBox @relation(fields: [boxId], references: [id])
+  customerId     String        @map("customer_id") @db.Uuid
+  customer       User          @relation("PaymentCustomer", fields: [customerId], references: [id])
+  method         PaymentMethod
+  amount         Decimal       @db.Decimal(12, 2)
+  currency       Currency
+  exchangeRate   Decimal?      @map("exchange_rate") @db.Decimal(12, 6)
+  status         PaymentStatus @default(PENDING)
+  collectedById  String?       @map("collected_by_id") @db.Uuid
+  collectedBy    User?         @relation("PaymentCollector", fields: [collectedById], references: [id])
+  paidAt         DateTime?     @map("paid_at")
+  createdAt      DateTime      @default(now()) @map("created_at")
+
+  @@map("payments")
+}
+
+// ─── 16. Notifications ───────────────────────────────────────────────────────
+
+model Notification {
+  id        String              @id @default(uuid()) @db.Uuid
+  userId    String              @map("user_id") @db.Uuid
+  user      User                @relation(fields: [userId], references: [id])
+  channel   NotificationChannel
+  event     String              // parcel_received, box_packed, etc.
+  message   String
+  status    NotificationStatus  @default(QUEUED)
+  sentAt    DateTime?           @map("sent_at")
+  createdAt DateTime            @default(now()) @map("created_at")
+
+  @@map("notifications")
+}
+
+// ─── 17. Settings ────────────────────────────────────────────────────────────
+
+model Setting {
+  id    String @id @default(uuid()) @db.Uuid
+  key   String @unique
+  value String
+  label String? // human-readable description
+
+  @@map("settings")
+}
+
+// ─── 19. Expenses (Расходы) ───────────────────────────────────────────────────
+
+model Expense {
+  id          String          @id @default(uuid()) @db.Uuid
+  scope       ExpenseScope    // BOX, BATCH, or GENERAL
+  category    ExpenseCategory
+  description String?
+  amount      Decimal         @db.Decimal(12, 2)
+  currency    Currency        @default(USD)
+
+  // Optional links — depending on scope
+  boxId       String?         @map("box_id") @db.Uuid
+  box         ConsolidationBox? @relation("BoxExpenses", fields: [boxId], references: [id])
+
+  batchId     String?         @map("batch_id") @db.Uuid
+  batch       ShipmentBatch?  @relation("BatchExpenses", fields: [batchId], references: [id])
+
+  // For GENERAL scope: date range for proportional distribution
+  periodStart DateTime?       @map("period_start")
+  periodEnd   DateTime?       @map("period_end")
+
+  createdById String          @map("created_by_id") @db.Uuid
+  createdBy   User            @relation(fields: [createdById], references: [id])
+
+  createdAt   DateTime        @default(now()) @map("created_at")
+  updatedAt   DateTime        @updatedAt @map("updated_at")
+
+  @@index([scope])
+  @@index([boxId])
+  @@index([batchId])
+  @@map("expenses")
+}
+
+// ─── 20. Audit Log ───────────────────────────────────────────────────────────
+
+model AuditLog {
+  id         String   @id @default(uuid()) @db.Uuid
+  userId     String   @map("user_id") @db.Uuid
+  user       User     @relation(fields: [userId], references: [id])
+  action     String   // intake, reject, pack, ship, deliver, payment, etc.
+  entityType String   @map("entity_type") // parcel, box, batch, payment
+  entityId   String   @map("entity_id") @db.Uuid
+  details    Json?    // arbitrary payload
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@index([entityType, entityId])
+  @@map("audit_log")
+}

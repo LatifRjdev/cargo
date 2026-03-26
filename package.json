@@ -1,0 +1,29 @@
+{
+  "name": "cargo",
+  "private": true,
+  "scripts": {
+    "dev:api": "turbo run dev --filter=@cargo/api",
+    "dev:web": "turbo run dev --filter=@cargo/web",
+    "dev:bot": "turbo run dev --filter=@cargo/bot",
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "db:migrate": "pnpm --filter @cargo/api prisma migrate dev",
+    "db:generate": "pnpm --filter @cargo/api prisma generate",
+    "db:seed": "pnpm --filter @cargo/api prisma db seed",
+    "db:studio": "pnpm --filter @cargo/api prisma studio"
+  },
+  "devDependencies": {
+    "turbo": "^2"
+  },
+  "packageManager": "pnpm@10.27.0",
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@nestjs/core",
+      "@prisma/client",
+      "@prisma/engines",
+      "prisma",
+      "msgpackr-extract"
+    ]
+  }
+}
