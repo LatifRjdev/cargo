@@ -17,6 +17,7 @@ import { ExchangeRatesModule } from './modules/exchange-rates/exchange-rates.mod
 import { PdfModule } from './modules/pdf/pdf.module';
 import { AdminModule } from './modules/admin/admin.module';
 import { CronModule } from './modules/cron/cron.module';
+import { UploadModule } from './modules/upload/upload.module';
 
 @Module({
   imports: [
@@ -38,6 +39,7 @@ import { CronModule } from './modules/cron/cron.module';
     PdfModule,
     AdminModule,
     CronModule,
+    UploadModule,
   ],
 })
 export class AppModule {}

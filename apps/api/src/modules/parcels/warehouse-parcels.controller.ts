@@ -6,13 +6,17 @@ import {
   Body,
   Query,
   UseGuards,
+  UseInterceptors,
+  UploadedFile,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { ParcelsService } from './parcels.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { UploadService } from '../upload/upload.service';
 import {
   IntakeDto,
   IntakeUnidentifiedDto,
@@ -27,7 +31,10 @@ import {
 @Roles('WAREHOUSE_WORKER', 'ADMIN')
 @Controller('warehouse/parcels')
 export class WarehouseParcelsController {
-  constructor(private readonly parcelsService: ParcelsService) {}
+  constructor(
+    private readonly parcelsService: ParcelsService,
+    private readonly uploadService: UploadService,
+  ) {}
 
   @Post('intake')
   intake(
@@ -47,6 +54,19 @@ export class WarehouseParcelsController {
     return this.parcelsService.intakeUnidentified(dto, warehouseId, userId);
   }
 
+  // Upload photo via file (multipart/form-data)
+  @Post(':id/photos/upload')
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 10 * 1024 * 1024 } }))
+  async uploadPhotoFile(
+    @Param('id') id: string,
+    @UploadedFile() file: Express.Multer.File,
+    @Query('type') type?: string,
+  ) {
+    const url = await this.uploadService.uploadFile(file, 'parcels');
+    return this.parcelsService.uploadPhoto(id, url, type || 'intake');
+  }
+
+  // Upload photo via URL (backward compatible)
   @Post(':id/photos')
   uploadPhoto(
     @Param('id') id: string,
