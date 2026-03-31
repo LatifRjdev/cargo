@@ -54,7 +54,7 @@ export class CronService {
         await this.notifications.sendLocalized(
           parcel.customerId,
           'storage_warning',
-          parcel.trackingNumber,
+          parcel.trackingNumber || parcel.id,
           storageDays.toString(),
         );
         sent++;

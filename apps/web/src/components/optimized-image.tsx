@@ -17,7 +17,7 @@ export function OptimizedImage({ src, alt, width, height, className = '', onClic
 
   if (error) {
     return (
-      <div className={`bg-gray-100 flex items-center justify-center text-gray-400 text-xs ${className}`} style={{ width, height }}>
+      <div className={`bg-slate-100 flex items-center justify-center text-slate-400 text-xs ${className}`} style={{ width, height }}>
         Нет фото
       </div>
     );
@@ -26,7 +26,7 @@ export function OptimizedImage({ src, alt, width, height, className = '', onClic
   return (
     <div className={`relative overflow-hidden ${className}`} style={{ width, height }}>
       {!loaded && (
-        <div className="absolute inset-0 animate-pulse bg-gray-200" />
+        <div className="absolute inset-0 animate-pulse bg-slate-200" />
       )}
       <img
         src={src}

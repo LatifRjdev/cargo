@@ -326,6 +326,10 @@ export class ParcelsService {
     customerId: string,
     dto: { trackingNumber: string; marketplace?: string },
   ) {
+    const user = await this.prisma.user.findUnique({ where: { id: customerId }, select: { homeWarehouseId: true } });
+    const defaultWarehouse = user?.homeWarehouseId || (await this.prisma.warehouse.findFirst({ where: { type: 'ORIGIN', isActive: true } }))?.id;
+    if (!defaultWarehouse) throw new Error('No warehouse available');
+
     return this.prisma.parcel.create({
       data: {
         trackingNumber: dto.trackingNumber,
@@ -334,6 +338,7 @@ export class ParcelsService {
           : undefined,
         status: ParcelStatus.WAITING,
         customerId,
+        warehouseId: defaultWarehouse,
         isUnidentified: false,
         weightKg: 0,
         lengthCm: 0,

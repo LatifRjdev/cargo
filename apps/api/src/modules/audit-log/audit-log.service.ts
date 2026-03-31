@@ -18,7 +18,7 @@ export class AuditLogService {
         action: params.action,
         entityType: params.entityType,
         entityId: params.entityId,
-        details: params.details ?? undefined,
+        details: (params.details as any) ?? undefined,
       },
     });
   }

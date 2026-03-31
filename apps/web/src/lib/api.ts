@@ -1,4 +1,4 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3002/api';
 
 export class ApiError extends Error {
   constructor(
@@ -54,7 +54,8 @@ export async function apiFetch<T>(path: string, options?: RequestInit): Promise<
     localStorage.removeItem('accessToken');
     localStorage.removeItem('refreshToken');
     localStorage.removeItem('user');
-    window.location.href = '/ru/login';
+    const savedLocale = localStorage.getItem('locale') || 'ru';
+    window.location.href = `/${savedLocale}/login`;
   }
 
   if (!res.ok) {

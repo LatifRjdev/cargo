@@ -3,23 +3,89 @@ import {
   UnauthorizedException,
   BadRequestException,
   ConflictException,
+  OnModuleInit,
+  OnModuleDestroy,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../prisma/prisma.service';
 import { UserRole } from '@prisma/client';
 import * as QRCode from 'qrcode';
+import Redis from 'ioredis';
+
+interface OtpData {
+  code: string;
+  expiresAt: number;
+  fullName?: string;
+}
 
 @Injectable()
-export class AuthService {
-  // In-memory OTP store (replace with Redis in production)
-  private otpStore = new Map<string, { code: string; expiresAt: number }>();
+export class AuthService implements OnModuleInit, OnModuleDestroy {
+  private redis: Redis | null = null;
+  // Fallback in-memory store if Redis unavailable
+  private memoryStore = new Map<string, string>();
+  private useRedis = false;
 
   constructor(
     private prisma: PrismaService,
     private jwt: JwtService,
     private config: ConfigService,
   ) {}
+
+  async onModuleInit() {
+    const redisUrl = this.config.get('REDIS_URL');
+    if (redisUrl) {
+      try {
+        this.redis = new Redis(redisUrl, { maxRetriesPerRequest: 3, lazyConnect: true });
+        await this.redis.connect();
+        this.useRedis = true;
+        console.log('[Auth] OTP store: Redis connected');
+      } catch (err) {
+        console.warn('[Auth] Redis unavailable, using in-memory OTP store');
+        this.redis = null;
+        this.useRedis = false;
+      }
+    } else {
+      console.log('[Auth] No REDIS_URL configured, using in-memory OTP store');
+    }
+  }
+
+  async onModuleDestroy() {
+    if (this.redis) {
+      await this.redis.quit();
+    }
+  }
+
+  private async setOtp(key: string, data: OtpData, ttlSeconds = 300) {
+    const json = JSON.stringify(data);
+    if (this.useRedis && this.redis) {
+      await this.redis.setex(`otp:${key}`, ttlSeconds, json);
+    } else {
+      this.memoryStore.set(key, json);
+      setTimeout(() => this.memoryStore.delete(key), ttlSeconds * 1000);
+    }
+  }
+
+  private async getOtp(key: string): Promise<OtpData | null> {
+    let json: string | null = null;
+    if (this.useRedis && this.redis) {
+      json = await this.redis.get(`otp:${key}`);
+    } else {
+      json = this.memoryStore.get(key) || null;
+    }
+    if (!json) return null;
+    return JSON.parse(json);
+  }
+
+  private async deleteOtp(key: string) {
+    if (this.useRedis && this.redis) {
+      await this.redis.del(`otp:${key}`);
+    } else {
+      this.memoryStore.delete(key);
+    }
+  }
+
+  // ─── Auth Methods ──────────────────────────────────────────────────────
 
   async register(phone: string, fullName?: string) {
     const existing = await this.prisma.user.findUnique({ where: { phone } });
@@ -28,12 +94,9 @@ export class AuthService {
     }
 
     const code = this.generateOtp();
-    this.otpStore.set(`reg:${phone}`, {
-      code,
-      expiresAt: Date.now() + 5 * 60 * 1000,
-    });
+    await this.setOtp(`reg:${phone}`, { code, expiresAt: Date.now() + 5 * 60 * 1000, fullName });
 
-    // TODO: integrate real SMS provider
+    // TODO: integrate real SMS provider (Tajikistan-compatible)
     console.log(`[OTP] Registration code for ${phone}: ${code}`);
 
     return { message: 'OTP отправлен', phone };
@@ -43,11 +106,11 @@ export class AuthService {
     const regKey = `reg:${phone}`;
     const loginKey = `login:${phone}`;
 
-    let stored = this.otpStore.get(regKey);
+    let stored = await this.getOtp(regKey);
     let isRegistration = true;
 
     if (!stored) {
-      stored = this.otpStore.get(loginKey);
+      stored = await this.getOtp(loginKey);
       isRegistration = false;
     }
 
@@ -56,8 +119,8 @@ export class AuthService {
     }
 
     if (Date.now() > stored.expiresAt) {
-      this.otpStore.delete(regKey);
-      this.otpStore.delete(loginKey);
+      await this.deleteOtp(regKey);
+      await this.deleteOtp(loginKey);
       throw new BadRequestException('OTP истёк. Запросите новый код');
     }
 
@@ -67,8 +130,9 @@ export class AuthService {
       throw new UnauthorizedException('Неверный OTP код');
     }
 
-    this.otpStore.delete(regKey);
-    this.otpStore.delete(loginKey);
+    const savedFullName = stored.fullName;
+    await this.deleteOtp(regKey);
+    await this.deleteOtp(loginKey);
 
     let user = await this.prisma.user.findUnique({ where: { phone } });
 
@@ -79,6 +143,7 @@ export class AuthService {
       user = await this.prisma.user.create({
         data: {
           phone,
+          fullName: savedFullName || null,
           clientCode,
           qrCodeUrl: qrDataUrl,
           role: UserRole.CUSTOMER,
@@ -117,11 +182,9 @@ export class AuthService {
     }
 
     const code = this.generateOtp();
-    this.otpStore.set(`login:${phone}`, {
-      code,
-      expiresAt: Date.now() + 5 * 60 * 1000,
-    });
+    await this.setOtp(`login:${phone}`, { code, expiresAt: Date.now() + 5 * 60 * 1000 });
 
+    // TODO: integrate real SMS provider
     console.log(`[OTP] Login code for ${phone}: ${code}`);
 
     return { message: 'OTP отправлен', phone };

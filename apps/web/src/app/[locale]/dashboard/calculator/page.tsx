@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { apiFetch } from '@/lib/api';
+import { useI18n } from '@/lib/i18n-context';
 
 interface Warehouse {
   id: string;
@@ -16,6 +17,7 @@ interface CalcResult {
 }
 
 export default function CalculatorPage() {
+  const { t } = useI18n();
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [loadingWarehouses, setLoadingWarehouses] = useState(true);
   const [originId, setOriginId] = useState('');
@@ -62,7 +64,7 @@ export default function CalculatorPage() {
       });
       setResult(res);
     } catch (err: any) {
-      setError(err.message || 'Ошибка расчёта');
+      setError(err.message || t.common.error);
     } finally {
       setLoading(false);
     }
@@ -70,28 +72,36 @@ export default function CalculatorPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">Калькулятор доставки</h1>
+      {/* Styled header section */}
+      <div className="relative mb-8 rounded-2xl bg-gradient-to-r from-violet-600 to-violet-700 px-6 py-6 text-white shadow-lg shadow-violet-200/50 overflow-hidden">
+        <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48Y2lyY2xlIGN4PSIyMCIgY3k9IjIwIiByPSIxIiBmaWxsPSJyZ2JhKDI1NSwyNTUsMjU1LDAuMDUpIi8+PC9zdmc+')] opacity-60" />
+        <div className="relative">
+          <h1 className="text-2xl font-bold">{t.customer.calcTitle}</h1>
+          <p className="text-sm text-violet-100 mt-1">{t.customer.calcSubtitle}</p>
+        </div>
+      </div>
 
       <div className="max-w-lg">
-        <form onSubmit={handleCalculate} className="rounded-xl border bg-white p-6 shadow-sm space-y-4">
+        <form onSubmit={handleCalculate} className="bg-white rounded-2xl border border-slate-200/80 border-t-[3px] border-t-violet-500 shadow-sm hover:shadow-md transition-all p-6 space-y-4">
           {loadingWarehouses ? (
-            <div className="flex justify-center py-4">
-              <div className="animate-spin rounded-full h-6 w-6 border-4 border-blue-600 border-t-transparent" />
+            <div className="flex flex-col items-center justify-center py-8">
+              <div className="h-8 w-8 animate-spin rounded-full border-[3px] border-slate-200 border-t-violet-600 mb-3" />
+              <p className="text-sm text-slate-400">{t.common.loading}</p>
             </div>
           ) : (
             <>
               <div>
-                <label htmlFor="origin" className="block text-sm font-medium text-gray-700 mb-1">
-                  Склад отправления
+                <label htmlFor="origin" className="block text-sm font-medium text-slate-700 mb-1">
+                  {t.nav.warehouse}
                 </label>
                 <select
                   id="origin"
                   value={originId}
                   onChange={(e) => setOriginId(e.target.value)}
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+                  className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-400 bg-white"
                   required
                 >
-                  <option value="">Выберите склад</option>
+                  <option value="">{t.admin.selectWarehouse}</option>
                   {warehouses.map((wh) => (
                     <option key={wh.id} value={wh.id}>{wh.name}</option>
                   ))}
@@ -99,17 +109,17 @@ export default function CalculatorPage() {
               </div>
 
               <div>
-                <label htmlFor="destination" className="block text-sm font-medium text-gray-700 mb-1">
-                  Склад назначения
+                <label htmlFor="destination" className="block text-sm font-medium text-slate-700 mb-1">
+                  {t.customer.route}
                 </label>
                 <select
                   id="destination"
                   value={destinationId}
                   onChange={(e) => setDestinationId(e.target.value)}
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+                  className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-400 bg-white"
                   required
                 >
-                  <option value="">Выберите склад</option>
+                  <option value="">{t.admin.selectWarehouse}</option>
                   {warehouses.map((wh) => (
                     <option key={wh.id} value={wh.id}>{wh.name}</option>
                   ))}
@@ -119,8 +129,8 @@ export default function CalculatorPage() {
           )}
 
           <div>
-            <label htmlFor="weight" className="block text-sm font-medium text-gray-700 mb-1">
-              Вес (кг)
+            <label htmlFor="weight" className="block text-sm font-medium text-slate-700 mb-1">
+              {t.customer.weightKg}
             </label>
             <input
               id="weight"
@@ -130,14 +140,14 @@ export default function CalculatorPage() {
               value={weight}
               onChange={(e) => setWeight(e.target.value)}
               placeholder="0.00"
-              className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-400"
               required
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Габариты (см) — необязательно
+            <label className="block text-sm font-medium text-slate-700 mb-1">
+              {t.parcels.dimensions}
             </label>
             <div className="grid grid-cols-3 gap-3">
               <input
@@ -147,7 +157,7 @@ export default function CalculatorPage() {
                 value={length}
                 onChange={(e) => setLength(e.target.value)}
                 placeholder="Длина"
-                className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-400"
               />
               <input
                 type="number"
@@ -156,7 +166,7 @@ export default function CalculatorPage() {
                 value={width}
                 onChange={(e) => setWidth(e.target.value)}
                 placeholder="Ширина"
-                className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-400"
               />
               <input
                 type="number"
@@ -165,13 +175,13 @@ export default function CalculatorPage() {
                 value={height}
                 onChange={(e) => setHeight(e.target.value)}
                 placeholder="Высота"
-                className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-400"
               />
             </div>
           </div>
 
           {error && (
-            <div className="rounded-lg bg-red-50 border border-red-200 text-red-700 px-4 py-3 text-sm">
+            <div className="rounded-xl bg-red-50 border border-red-200 text-red-700 px-4 py-3 text-sm">
               {error}
             </div>
           )}
@@ -179,32 +189,39 @@ export default function CalculatorPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full rounded-lg bg-blue-600 px-4 py-3 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="w-full rounded-xl bg-gradient-to-r from-violet-600 to-violet-700 shadow-sm shadow-violet-200 px-4 py-3 text-sm font-semibold text-white hover:from-violet-700 hover:to-violet-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
           >
-            {loading ? 'Расчёт...' : 'Рассчитать'}
+            {loading ? t.common.loading : t.customer.calculate}
           </button>
         </form>
 
         {/* Result */}
         {result && (
-          <div className="mt-6 rounded-xl border bg-white p-6 shadow-sm">
-            <h2 className="text-lg font-semibold mb-4">Результат расчёта</h2>
+          <div className="mt-6 bg-white rounded-2xl border border-slate-200/80 border-t-[3px] border-t-green-500 shadow-sm hover:shadow-md transition-all p-6">
+            <div className="flex items-center gap-2 mb-4">
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-green-100 to-green-50 flex items-center justify-center">
+                <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+              <h2 className="text-lg font-semibold text-slate-900">{t.customer.costCalculation}</h2>
+            </div>
             <div className="space-y-3">
-              <div className="flex justify-between items-center py-2 border-b">
-                <span className="text-sm text-gray-500">Фактический вес</span>
-                <span className="text-sm font-medium">{result.actualWeight} кг</span>
+              <div className="flex justify-between items-center py-2 border-b border-slate-100">
+                <span className="text-sm text-slate-500">{t.common.weight}</span>
+                <span className="text-sm font-medium text-slate-900">{result.actualWeight} кг</span>
               </div>
-              <div className="flex justify-between items-center py-2 border-b">
-                <span className="text-sm text-gray-500">Объёмный вес</span>
-                <span className="text-sm font-medium">{result.volumetricWeight} кг</span>
+              <div className="flex justify-between items-center py-2 border-b border-slate-100">
+                <span className="text-sm text-slate-500">{t.parcels.dimensions}</span>
+                <span className="text-sm font-medium text-slate-900">{result.volumetricWeight} кг</span>
               </div>
-              <div className="flex justify-between items-center py-2 border-b">
-                <span className="text-sm text-gray-500">Расчётный вес</span>
-                <span className="text-sm font-semibold">{result.billableWeight} кг</span>
+              <div className="flex justify-between items-center py-2 border-b border-slate-100">
+                <span className="text-sm text-slate-500">{t.customer.billableWeight}</span>
+                <span className="text-sm font-semibold text-slate-900">{result.billableWeight} кг</span>
               </div>
-              <div className="flex justify-between items-center py-2">
-                <span className="text-base font-medium text-gray-900">Стоимость</span>
-                <span className="text-xl font-bold text-blue-600">${result.price}</span>
+              <div className="flex justify-between items-center py-3 rounded-xl bg-gradient-to-r from-green-50 to-emerald-50 px-4 -mx-1">
+                <span className="text-base font-medium text-slate-900">{t.customer.estimatedCost}</span>
+                <span className="text-xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">${result.price}</span>
               </div>
             </div>
           </div>

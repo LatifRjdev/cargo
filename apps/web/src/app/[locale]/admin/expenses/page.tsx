@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { apiFetch } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
+import { useI18n } from '@/lib/i18n-context';
 
 const scopeLabels: Record<string, string> = {
   BOX: 'Коробка',
@@ -38,6 +39,7 @@ interface Expense {
 
 export default function ExpensesPage() {
   const { user } = useAuth();
+  const { t, locale } = useI18n();
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -59,8 +61,8 @@ export default function ExpensesPage() {
   const fetchExpenses = async () => {
     setLoading(true);
     try {
-      const data = await apiFetch<Expense[]>('/admin/expenses');
-      setExpenses(data);
+      const result = await apiFetch<any>('/admin/expenses');
+      setExpenses(Array.isArray(result) ? result : result.data || []);
     } catch {
       // error handled silently
     } finally {
@@ -127,7 +129,7 @@ export default function ExpensesPage() {
 
       if (editingId) {
         await apiFetch(`/admin/expenses/${editingId}`, {
-          method: 'PUT',
+          method: 'PATCH',
           body: JSON.stringify(body),
         });
       } else {
@@ -157,108 +159,162 @@ export default function ExpensesPage() {
     }
   };
 
+  const totalAmount = expenses.reduce((sum, e) => sum + e.amount, 0);
+
   return (
-    <div>
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold">Расходы</h1>
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-3">
+            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-red-500 to-rose-600 shadow-lg shadow-red-200/50">
+              <svg className="h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 003 15h-.75M15 10.5a3 3 0 11-6 0 3 3 0 016 0zm3 0h.008v.008H18V10.5zm-12 0h.008v.008H6V10.5z" />
+              </svg>
+            </span>
+            {t.nav.expenses}
+          </h1>
+          <p className="text-sm text-slate-500 mt-1 ml-[52px]">Учет и управление расходами</p>
+        </div>
         <button
           onClick={openCreate}
-          className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition-colors"
+          className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-medium text-white shadow-sm shadow-blue-200 hover:bg-blue-700 transition-colors"
         >
+          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+          </svg>
           Добавить расход
         </button>
       </div>
 
+      {/* Summary Card */}
+      {!loading && expenses.length > 0 && (
+        <div className="bg-white rounded-2xl border border-slate-200/80 border-t-[3px] border-t-red-500 p-5 shadow-sm hover:shadow-lg hover:shadow-slate-200/50 transition-all">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-slate-500">Всего расходов</p>
+              <p className="text-2xl font-bold text-slate-900 mt-0.5">{expenses.length}</p>
+            </div>
+            <div className="text-right">
+              <p className="text-sm text-slate-500">Общая сумма</p>
+              <p className="text-2xl font-bold text-slate-900 mt-0.5">${totalAmount.toLocaleString()}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Table */}
-      <div className="rounded-lg border bg-white overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b bg-gray-50">
-              <th className="text-left px-4 py-3 font-medium text-gray-600">Дата</th>
-              <th className="text-left px-4 py-3 font-medium text-gray-600">Категория</th>
-              <th className="text-left px-4 py-3 font-medium text-gray-600">Область</th>
-              <th className="text-left px-4 py-3 font-medium text-gray-600">Описание</th>
-              <th className="text-right px-4 py-3 font-medium text-gray-600">Сумма</th>
-              <th className="text-left px-4 py-3 font-medium text-gray-600">Привязка</th>
-              <th className="text-left px-4 py-3 font-medium text-gray-600">Действия</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-gray-500">
-                  Загрузка...
-                </td>
+      <div className="bg-white rounded-2xl border border-slate-200/80 overflow-hidden shadow-sm hover:shadow-lg hover:shadow-slate-200/50 transition-all">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-slate-100">
+                <th className="text-left px-5 py-3.5 text-[11px] font-semibold uppercase tracking-wider text-slate-500 bg-slate-50/50">Дата</th>
+                <th className="text-left px-5 py-3.5 text-[11px] font-semibold uppercase tracking-wider text-slate-500 bg-slate-50/50">Категория</th>
+                <th className="text-left px-5 py-3.5 text-[11px] font-semibold uppercase tracking-wider text-slate-500 bg-slate-50/50">Область</th>
+                <th className="text-left px-5 py-3.5 text-[11px] font-semibold uppercase tracking-wider text-slate-500 bg-slate-50/50">Описание</th>
+                <th className="text-right px-5 py-3.5 text-[11px] font-semibold uppercase tracking-wider text-slate-500 bg-slate-50/50">Сумма</th>
+                <th className="text-left px-5 py-3.5 text-[11px] font-semibold uppercase tracking-wider text-slate-500 bg-slate-50/50">Привязка</th>
+                <th className="text-right px-5 py-3.5 text-[11px] font-semibold uppercase tracking-wider text-slate-500 bg-slate-50/50">Действия</th>
               </tr>
-            ) : expenses.length === 0 ? (
-              <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-gray-500">
-                  Расходы не найдены
-                </td>
-              </tr>
-            ) : (
-              expenses.map((exp) => (
-                <tr key={exp.id} className="border-b last:border-0 hover:bg-gray-50">
-                  <td className="px-4 py-3 text-gray-500">
-                    {new Date(exp.date).toLocaleDateString('ru-RU')}
-                  </td>
-                  <td className="px-4 py-3">{categoryLabels[exp.category] || exp.category}</td>
-                  <td className="px-4 py-3">
-                    <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium">
-                      {scopeLabels[exp.scope] || exp.scope}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 max-w-xs truncate">{exp.description}</td>
-                  <td className="px-4 py-3 text-right font-medium">
-                    {exp.amount.toLocaleString()} {exp.currency}
-                  </td>
-                  <td className="px-4 py-3 text-xs text-gray-500">
-                    {exp.linkedBoxCode || exp.linkedBatchCode || '—'}
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex gap-1">
-                      <button
-                        onClick={() => openEdit(exp)}
-                        className="rounded border px-2 py-1 text-xs text-blue-600 hover:bg-blue-50 transition-colors"
-                      >
-                        Изменить
-                      </button>
-                      <button
-                        onClick={() => handleDelete(exp.id)}
-                        className="rounded border px-2 py-1 text-xs text-red-600 hover:bg-red-50 transition-colors"
-                      >
-                        Удалить
-                      </button>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {loading ? (
+                <tr>
+                  <td colSpan={7} className="px-5 py-16 text-center">
+                    <div className="flex flex-col items-center gap-3">
+                      <div className="h-6 w-6 animate-spin rounded-full border-2 border-slate-200 border-t-blue-600" />
+                      <span className="text-sm text-slate-400">Загрузка...</span>
                     </div>
                   </td>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+              ) : expenses.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="px-5 py-16 text-center">
+                    <div className="flex flex-col items-center gap-3">
+                      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-100">
+                        <svg className="h-6 w-6 text-slate-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 003 15h-.75M15 10.5a3 3 0 11-6 0 3 3 0 016 0zm3 0h.008v.008H18V10.5zm-12 0h.008v.008H6V10.5z" />
+                        </svg>
+                      </div>
+                      <p className="text-sm font-medium text-slate-400">Расходы не найдены</p>
+                    </div>
+                  </td>
+                </tr>
+              ) : (
+                expenses.map((exp) => (
+                  <tr key={exp.id} className="hover:bg-slate-50/50 transition-colors">
+                    <td className="px-5 py-3.5 text-slate-500 text-sm">
+                      {new Date(exp.date).toLocaleDateString('ru-RU')}
+                    </td>
+                    <td className="px-5 py-3.5 text-sm font-medium text-slate-700">{categoryLabels[exp.category] || exp.category}</td>
+                    <td className="px-5 py-3.5">
+                      <span className="inline-flex items-center rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">
+                        {scopeLabels[exp.scope] || exp.scope}
+                      </span>
+                    </td>
+                    <td className="px-5 py-3.5 max-w-xs truncate text-sm text-slate-600">{exp.description}</td>
+                    <td className="px-5 py-3.5 text-right font-semibold text-slate-900 tabular-nums">
+                      {exp.amount.toLocaleString()} {exp.currency}
+                    </td>
+                    <td className="px-5 py-3.5 text-xs text-slate-400 font-mono">
+                      {exp.linkedBoxCode || exp.linkedBatchCode || '—'}
+                    </td>
+                    <td className="px-5 py-3.5 text-right">
+                      <div className="flex items-center justify-end gap-1.5">
+                        <button
+                          onClick={() => openEdit(exp)}
+                          className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 hover:border-slate-300 transition-colors"
+                        >
+                          {t.common.edit}
+                        </button>
+                        <button
+                          onClick={() => handleDelete(exp.id)}
+                          className="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 hover:border-red-300 transition-colors"
+                        >
+                          {t.common.delete}
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {/* Modal */}
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="w-full max-w-md rounded-lg bg-white p-6 mx-4 max-h-[90vh] overflow-y-auto">
-            <h2 className="text-lg font-bold mb-4">
-              {editingId ? 'Редактировать расход' : 'Добавить расход'}
-            </h2>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 mx-4 shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-5">
+              <h2 className="text-lg font-bold text-slate-900">
+                {editingId ? 'Редактировать расход' : 'Добавить расход'}
+              </h2>
+              <button
+                onClick={() => { setShowModal(false); resetForm(); }}
+                className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
+              >
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
 
             {error && (
-              <div className="mb-4 rounded-lg bg-red-50 border border-red-200 p-3 text-sm text-red-700">
+              <div className="mb-4 rounded-xl bg-gradient-to-r from-red-50 to-red-100/50 border border-red-200 p-3 text-sm text-red-700">
                 {error}
               </div>
             )}
 
             <div className="space-y-4">
               <div>
-                <label className="block text-sm text-gray-600 mb-1">Область</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">Область</label>
                 <select
                   value={formScope}
                   onChange={(e) => setFormScope(e.target.value)}
-                  className="w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-colors"
                 >
                   {scopeOptions.map(([val, label]) => (
                     <option key={val} value={val}>{label}</option>
@@ -267,11 +323,11 @@ export default function ExpensesPage() {
               </div>
 
               <div>
-                <label className="block text-sm text-gray-600 mb-1">Категория</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">Категория</label>
                 <select
                   value={formCategory}
                   onChange={(e) => setFormCategory(e.target.value)}
-                  className="w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-colors"
                 >
                   <option value="">Выберите категорию</option>
                   {categoryOptions.map(([val, label]) => (
@@ -282,7 +338,7 @@ export default function ExpensesPage() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm text-gray-600 mb-1">Сумма</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Сумма</label>
                   <input
                     type="number"
                     step="0.01"
@@ -290,15 +346,15 @@ export default function ExpensesPage() {
                     value={formAmount}
                     onChange={(e) => setFormAmount(e.target.value)}
                     placeholder="0.00"
-                    className="w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-colors"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm text-gray-600 mb-1">Валюта</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Валюта</label>
                   <select
                     value={formCurrency}
                     onChange={(e) => setFormCurrency(e.target.value)}
-                    className="w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-colors"
                   >
                     <option value="USD">USD</option>
                     <option value="CNY">CNY</option>
@@ -308,38 +364,38 @@ export default function ExpensesPage() {
               </div>
 
               <div>
-                <label className="block text-sm text-gray-600 mb-1">Описание</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">Описание</label>
                 <textarea
                   value={formDescription}
                   onChange={(e) => setFormDescription(e.target.value)}
                   rows={2}
                   placeholder="Описание расхода"
-                  className="w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-colors resize-none"
                 />
               </div>
 
               {formScope === 'BOX' && (
                 <div>
-                  <label className="block text-sm text-gray-600 mb-1">Код коробки</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Код коробки</label>
                   <input
                     type="text"
                     value={formBoxCode}
                     onChange={(e) => setFormBoxCode(e.target.value)}
                     placeholder="BOX-XXXX"
-                    className="w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-colors"
                   />
                 </div>
               )}
 
               {formScope === 'BATCH' && (
                 <div>
-                  <label className="block text-sm text-gray-600 mb-1">Код рейса</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Код рейса</label>
                   <input
                     type="text"
                     value={formBatchCode}
                     onChange={(e) => setFormBatchCode(e.target.value)}
                     placeholder="BATCH-XXXX"
-                    className="w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-colors"
                   />
                 </div>
               )}
@@ -347,40 +403,45 @@ export default function ExpensesPage() {
               {formScope === 'GENERAL' && (
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-sm text-gray-600 mb-1">Период с</label>
+                    <label className="block text-sm font-medium text-slate-700 mb-1.5">Период с</label>
                     <input
                       type="date"
                       value={formPeriodFrom}
                       onChange={(e) => setFormPeriodFrom(e.target.value)}
-                      className="w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-colors"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm text-gray-600 mb-1">Период по</label>
+                    <label className="block text-sm font-medium text-slate-700 mb-1.5">Период по</label>
                     <input
                       type="date"
                       value={formPeriodTo}
                       onChange={(e) => setFormPeriodTo(e.target.value)}
-                      className="w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-colors"
                     />
                   </div>
                 </div>
               )}
             </div>
 
-            <div className="flex gap-2 mt-6">
+            <div className="flex gap-3 mt-6">
               <button
                 onClick={() => { setShowModal(false); resetForm(); }}
-                className="flex-1 rounded-lg border px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                className="flex-1 rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors"
               >
-                Отмена
+                {t.common.cancel}
               </button>
               <button
                 onClick={handleSubmit}
                 disabled={submitLoading || !formCategory || !formAmount}
-                className="flex-1 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="flex-1 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm shadow-blue-200 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
-                {submitLoading ? 'Сохранение...' : editingId ? 'Сохранить' : 'Добавить'}
+                {submitLoading ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                    {t.common.saving}
+                  </span>
+                ) : editingId ? t.common.save : t.common.add}
               </button>
             </div>
           </div>

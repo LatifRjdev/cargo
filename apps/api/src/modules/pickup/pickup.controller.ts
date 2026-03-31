@@ -18,7 +18,7 @@ import { PayDto } from './dto/pickup.dto';
 @ApiTags('Pickup')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles('ADMIN', 'WORKER')
+@Roles('ADMIN', 'WAREHOUSE_WORKER')
 @Controller('pickup')
 export class PickupController {
   constructor(private readonly pickupService: PickupService) {}

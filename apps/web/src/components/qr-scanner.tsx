@@ -38,12 +38,12 @@ export default function QrScanner({ onScan, onClose }: QrScannerProps) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
-      <div className="w-full max-w-sm rounded-lg bg-white p-4">
+      <div className="w-full max-w-sm rounded-2xl bg-white p-4">
         <div className="mb-3 flex items-center justify-between">
           <h3 className="font-semibold">Сканировать QR-код</h3>
           <button
             onClick={onClose}
-            className="rounded p-1 text-gray-500 hover:bg-gray-100"
+            className="rounded p-1 text-slate-500 hover:bg-slate-100"
           >
             ✕
           </button>
@@ -57,7 +57,7 @@ export default function QrScanner({ onScan, onClose }: QrScannerProps) {
 
         <button
           onClick={onClose}
-          className="mt-3 w-full rounded-lg border py-2 text-sm hover:bg-gray-50"
+          className="mt-3 w-full rounded-lg border py-2 text-sm hover:bg-slate-50"
         >
           Отмена
         </button>

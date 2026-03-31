@@ -2,8 +2,10 @@
 
 import { useEffect, useState } from 'react';
 import { apiFetch } from '@/lib/api';
+import { useI18n } from '@/lib/i18n-context';
 
 export default function ProhibitedItemsPage() {
+  const { t, locale } = useI18n();
   const [items, setItems] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [newItem, setNewItem] = useState('');
@@ -57,7 +59,7 @@ export default function ProhibitedItemsPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold mb-6">Запрещённые товары</h1>
+      <h1 className="text-2xl font-bold mb-6">{t.nav.prohibited}</h1>
 
       <div className="flex gap-2 mb-6">
         <input
@@ -73,16 +75,16 @@ export default function ProhibitedItemsPage() {
           disabled={adding || !newItem.trim()}
           className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
         >
-          {adding ? '...' : 'Добавить'}
+          {adding ? '...' : t.common.add}
         </button>
       </div>
 
       {loading ? (
-        <p className="text-gray-500">Загрузка...</p>
+        <p className="text-slate-500">{t.common.loading}</p>
       ) : items.length === 0 ? (
-        <p className="text-gray-400">Список пуст</p>
+        <p className="text-slate-400">Список пуст</p>
       ) : (
-        <div className="rounded-lg border bg-white divide-y">
+        <div className="rounded-2xl border bg-white divide-y">
           {items.map((item) => (
             <div key={item} className="flex items-center justify-between px-4 py-3">
               <span className="text-sm">{item}</span>
@@ -90,7 +92,7 @@ export default function ProhibitedItemsPage() {
                 onClick={() => handleRemove(item)}
                 className="rounded border px-2 py-1 text-xs text-red-600 hover:bg-red-50 transition-colors"
               >
-                Удалить
+                {t.common.delete}
               </button>
             </div>
           ))}

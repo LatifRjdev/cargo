@@ -22,7 +22,7 @@ export class TariffsController {
       where: { boxCode: code },
       include: {
         statusLog: { orderBy: { createdAt: 'asc' } },
-        warehouse: { select: { name: true, city: true } },
+        warehouse: { select: { name: true, address: true } },
         batch: {
           select: {
             batchCode: true,
@@ -42,9 +42,9 @@ export class TariffsController {
     return {
       boxCode: box.boxCode,
       status: box.status,
-      warehouse: box.warehouse,
-      batch: box.batch,
-      statusLog: box.statusLog,
+      warehouse: (box as any).warehouse,
+      batch: (box as any).batch,
+      statusLog: (box as any).statusLog,
       createdAt: box.createdAt,
     };
   }

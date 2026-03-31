@@ -141,6 +141,13 @@ export class AdminController {
     return this.adminService.removeProhibitedItem(body.item);
   }
 
+  // ─── Unidentified Parcels ──────────────────────────────────────────────────
+
+  @Get('unidentified-parcels')
+  listUnidentifiedParcels() {
+    return this.adminService.listUnidentifiedParcels();
+  }
+
   // ─── Audit Log ────────────────────────────────────────────────────────────
 
   @Get('audit-log')
@@ -225,6 +232,11 @@ export class AdminController {
   @Post('notifications/broadcast')
   broadcast(@Body() body: { message: string; target: 'all' | 'warehouse' | 'selected'; userIds?: string[]; warehouseId?: string }) {
     return this.adminService.broadcastNotification(body.message, body.target, body.userIds, body.warehouseId);
+  }
+
+  @Get('boxes')
+  listBoxes(@Query() query: { status?: string; page?: string; limit?: string }) {
+    return this.adminService.listBoxes(query);
   }
 
   @Patch('boxes/:id/price')

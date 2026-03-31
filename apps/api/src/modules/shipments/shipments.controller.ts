@@ -19,7 +19,7 @@ import { CreateShipmentDto, AddBoxesDto, UpdateStatusDto } from './dto/shipment.
 @ApiTags('Shipments')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles('ADMIN', 'WORKER')
+@Roles('ADMIN', 'WAREHOUSE_WORKER')
 @Controller('shipments')
 export class ShipmentsController {
   constructor(private readonly shipmentsService: ShipmentsService) {}

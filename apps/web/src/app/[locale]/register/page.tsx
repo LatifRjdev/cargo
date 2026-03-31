@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { authApi } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
+import { useI18n } from '@/lib/i18n-context';
 
 export default function RegisterPage() {
   const [step, setStep] = useState<1 | 2>(1);
@@ -14,6 +15,7 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
   const { login } = useAuth();
+  const { t, locale } = useI18n();
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -23,7 +25,7 @@ export default function RegisterPage() {
       await authApi.register(phone);
       setStep(2);
     } catch (err: any) {
-      setError(err.message || 'Ошибка при регистрации');
+      setError(err.message || t.auth.registerError);
     } finally {
       setLoading(false);
     }
@@ -37,101 +39,147 @@ export default function RegisterPage() {
       const result = await authApi.verifyOtp(phone, code);
       login(result.accessToken, result.refreshToken, result.user);
       const role = result.user.role;
-      if (role === 'ADMIN') {
-        router.push('/ru/admin');
-      } else if (role === 'WAREHOUSE_WORKER') {
-        router.push('/ru/warehouse');
-      } else {
-        router.push('/ru/dashboard');
-      }
+      if (role === 'ADMIN') router.push(`/${locale}/admin`);
+      else if (role === 'WAREHOUSE_WORKER') router.push(`/${locale}/warehouse`);
+      else router.push(`/${locale}/dashboard`);
     } catch (err: any) {
-      setError(err.message || 'Неверный код');
+      setError(err.message || t.auth.invalidCode);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
-      <div className="w-full max-w-md bg-white rounded-2xl shadow-lg p-8">
-        <h1 className="text-2xl font-bold text-center mb-2">Регистрация</h1>
-        <p className="text-gray-500 text-center mb-8 text-sm">
-          {step === 1
-            ? 'Введите номер телефона для регистрации'
-            : 'Введите код подтверждения'}
-        </p>
-
-        {error && (
-          <div className="mb-4 rounded-lg bg-red-50 border border-red-200 text-red-700 px-4 py-3 text-sm">
-            {error}
+    <div className="min-h-screen flex bg-slate-50">
+      {/* Left decorative panel */}
+      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-emerald-600 via-teal-700 to-cyan-800 relative overflow-hidden">
+        <div className="absolute inset-0 opacity-10">
+          <div className="absolute top-16 right-20 w-80 h-80 rounded-full border border-white/30" />
+          <div className="absolute bottom-24 left-16 w-64 h-64 rounded-full border border-white/20" />
+          <div className="absolute top-1/3 right-1/3 w-40 h-40 rounded-full border border-white/25" />
+        </div>
+        <div className="relative z-10 flex flex-col justify-center px-16">
+          <div className="flex items-center gap-3 mb-8">
+            <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
+              <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg>
+            </div>
+            <span className="text-2xl font-bold text-white">Cargo</span>
           </div>
-        )}
+          <h2 className="text-4xl font-bold text-white leading-tight mb-4">
+            {t.auth.regHeroTitle.split('\n').map((line, i) => (
+              <span key={i}>{line}{i === 0 && <br />}</span>
+            ))}
+          </h2>
+          <p className="text-emerald-100 text-lg leading-relaxed max-w-md">
+            {t.auth.regHeroDesc}
+          </p>
+          <div className="mt-12 space-y-4">
+            {[
+              { icon: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z', text: t.auth.freeRegistration },
+              { icon: 'M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z', text: t.auth.personalQr },
+              { icon: 'M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9', text: t.auth.telegramNotifications },
+            ].map((item) => (
+              <div key={item.text} className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-white/15 flex items-center justify-center shrink-0">
+                  <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d={item.icon} /></svg>
+                </div>
+                <span className="text-emerald-50 text-sm">{item.text}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
 
-        {step === 1 ? (
-          <form onSubmit={handleRegister} className="space-y-4">
-            <div>
-              <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1">
-                Номер телефона
-              </label>
-              <input
-                id="phone"
-                type="tel"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="+992 XX XXX XXXX"
-                className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                required
-              />
+      {/* Right form panel */}
+      <div className="flex-1 flex items-center justify-center px-4 py-12">
+        <div className="w-full max-w-[420px]">
+          {/* Mobile logo */}
+          <div className="lg:hidden flex items-center gap-2 mb-10">
+            <div className="w-10 h-10 rounded-xl bg-emerald-600 flex items-center justify-center">
+              <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg>
             </div>
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full rounded-lg bg-blue-600 px-4 py-3 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              {loading ? 'Отправка...' : 'Зарегистрироваться'}
-            </button>
-            <p className="text-center text-sm text-gray-500">
-              Уже есть аккаунт?{' '}
-              <Link href="/ru/login" className="text-blue-600 hover:underline font-medium">
-                Войти
-              </Link>
+            <span className="text-xl font-bold text-slate-900">Cargo</span>
+          </div>
+
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold text-slate-900">
+              {step === 1 ? t.auth.register : t.auth.confirmation}
+            </h1>
+            <p className="text-slate-500 mt-2">
+              {step === 1 ? t.auth.registerSubtitle : `${t.auth.codeSentTo} ${phone}`}
             </p>
-          </form>
-        ) : (
-          <form onSubmit={handleVerify} className="space-y-4">
-            <div>
-              <label htmlFor="code" className="block text-sm font-medium text-gray-700 mb-1">
-                Код подтверждения
-              </label>
-              <input
-                id="code"
-                type="text"
-                inputMode="numeric"
-                maxLength={4}
-                value={code}
-                onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 4))}
-                placeholder="0000"
-                className="w-full rounded-lg border border-gray-300 px-4 py-3 text-center text-2xl tracking-[0.5em] font-mono focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                required
-              />
-              <p className="mt-2 text-xs text-gray-400">Код отправлен на {phone}</p>
+          </div>
+
+          {/* Step indicator */}
+          <div className="flex items-center gap-3 mb-8">
+            <div className="flex items-center gap-2">
+              <div className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-semibold ${step >= 1 ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-500'}`}>1</div>
+              <span className="text-xs text-slate-500 hidden sm:inline">{t.auth.step}</span>
             </div>
-            <button
-              type="submit"
-              disabled={loading || code.length !== 4}
-              className="w-full rounded-lg bg-blue-600 px-4 py-3 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              {loading ? 'Проверка...' : 'Подтвердить'}
-            </button>
-            <button
-              type="button"
-              onClick={() => { setStep(1); setCode(''); setError(''); }}
-              className="w-full text-sm text-gray-500 hover:text-gray-700"
-            >
-              Изменить номер
-            </button>
-          </form>
-        )}
+            <div className={`flex-1 h-0.5 rounded ${step >= 2 ? 'bg-emerald-600' : 'bg-slate-200'}`} />
+            <div className="flex items-center gap-2">
+              <div className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-semibold ${step >= 2 ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-500'}`}>2</div>
+              <span className="text-xs text-slate-500 hidden sm:inline">{t.auth.step2}</span>
+            </div>
+          </div>
+
+          {error && (
+            <div className="mb-6 flex items-center gap-3 rounded-xl bg-red-50 border border-red-200 px-4 py-3">
+              <svg className="w-5 h-5 text-red-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z" /></svg>
+              <p className="text-sm text-red-700">{error}</p>
+            </div>
+          )}
+
+          {step === 1 ? (
+            <form onSubmit={handleRegister} className="space-y-5">
+              <div>
+                <label htmlFor="phone" className="block text-sm font-medium text-slate-700 mb-2">{t.auth.phone}</label>
+                <div className="relative">
+                  <svg className="w-5 h-5 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" /></svg>
+                  <input
+                    id="phone" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder={t.auth.phonePlaceholder}
+                    className="w-full rounded-xl border border-slate-200 pl-12 pr-4 py-3.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all"
+                    required
+                  />
+                </div>
+              </div>
+              <button type="submit" disabled={loading} className="w-full rounded-xl bg-emerald-600 px-4 py-3.5 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50 shadow-lg shadow-emerald-200 transition-all active:scale-[0.98]">
+                {loading ? (
+                  <span className="flex items-center justify-center gap-2"><span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />{t.common.sending}</span>
+                ) : t.auth.registerLink}
+              </button>
+              <p className="text-center text-sm text-slate-500">
+                {t.auth.hasAccount}{' '}
+                <Link href={`/${locale}/login`} className="text-blue-600 hover:text-blue-700 font-semibold transition-colors">{t.auth.loginLink}</Link>
+              </p>
+            </form>
+          ) : (
+            <form onSubmit={handleVerify} className="space-y-5">
+              <div>
+                <label htmlFor="code" className="block text-sm font-medium text-slate-700 mb-2">{t.auth.otp}</label>
+                <input
+                  id="code" type="text" inputMode="numeric" maxLength={4} value={code}
+                  onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 4))} placeholder="0000"
+                  className="w-full rounded-xl border border-slate-200 px-4 py-4 text-center text-3xl tracking-[0.5em] font-mono text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all"
+                  autoFocus required
+                />
+                <p className="mt-3 text-xs text-slate-400 text-center">{t.auth.devCode} <span className="font-mono font-semibold text-slate-600">0000</span></p>
+              </div>
+              <button type="submit" disabled={loading || code.length !== 4} className="w-full rounded-xl bg-emerald-600 px-4 py-3.5 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50 shadow-lg shadow-emerald-200 transition-all active:scale-[0.98]">
+                {loading ? (
+                  <span className="flex items-center justify-center gap-2"><span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />{t.common.checking}</span>
+                ) : t.auth.confirmBtn}
+              </button>
+              <button type="button" onClick={() => { setStep(1); setCode(''); setError(''); }} className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors">
+                {t.auth.changeNumber}
+              </button>
+            </form>
+          )}
+
+          <p className="text-center text-xs text-slate-400 mt-10">
+            Cargo Consolidation System
+          </p>
+        </div>
       </div>
     </div>
   );

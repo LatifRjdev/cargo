@@ -22,7 +22,7 @@ export class PdfController {
 
   @Get('warehouse/boxes/:id/label')
   @UseGuards(RolesGuard)
-  @Roles('ADMIN', 'WORKER')
+  @Roles('ADMIN', 'WAREHOUSE_WORKER')
   async boxLabel(@Param('id') id: string, @Res() res: Response) {
     const buffer = await this.pdfService.boxLabel(id);
     res.set({
@@ -34,7 +34,7 @@ export class PdfController {
 
   @Get('shipments/:id/manifest')
   @UseGuards(RolesGuard)
-  @Roles('ADMIN', 'WORKER')
+  @Roles('ADMIN', 'WAREHOUSE_WORKER')
   async shipmentManifest(@Param('id') id: string, @Res() res: Response) {
     const buffer = await this.pdfService.shipmentManifest(id);
     res.set({
@@ -46,7 +46,7 @@ export class PdfController {
 
   @Get('pickup/:boxId/receipt')
   @UseGuards(RolesGuard)
-  @Roles('ADMIN', 'WORKER')
+  @Roles('ADMIN', 'WAREHOUSE_WORKER')
   async paymentReceipt(@Param('boxId') boxId: string, @Res() res: Response) {
     const buffer = await this.pdfService.paymentReceipt(boxId);
     res.set({
@@ -56,13 +56,4 @@ export class PdfController {
     res.send(buffer);
   }
 
-  @Get('me/qr/pdf')
-  async customerQrPdf(@CurrentUser('id') userId: string, @Res() res: Response) {
-    const buffer = await this.pdfService.customerQrPdf(userId);
-    res.set({
-      'Content-Type': 'application/pdf',
-      'Content-Disposition': 'inline; filename="qr-code.pdf"',
-    });
-    res.send(buffer);
-  }
 }

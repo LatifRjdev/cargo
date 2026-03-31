@@ -29,7 +29,7 @@ export class WarehousesController {
   @Get('warehouse/cells')
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('ADMIN', 'WORKER')
+  @Roles('ADMIN', 'WAREHOUSE_WORKER')
   getCells(@Query('warehouseId') warehouseId: string) {
     return this.warehousesService.findCells(warehouseId);
   }
@@ -37,7 +37,7 @@ export class WarehousesController {
   @Post('warehouse/cells')
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('ADMIN', 'WORKER')
+  @Roles('ADMIN', 'WAREHOUSE_WORKER')
   createCell(@Body() body: { warehouseId: string; code: string }) {
     return this.warehousesService.createCell(body.warehouseId, body.code);
   }
@@ -63,7 +63,7 @@ export class WarehousesController {
   @Get('warehouse/inventory')
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('ADMIN', 'WORKER')
+  @Roles('ADMIN', 'WAREHOUSE_WORKER')
   inventory(
     @Query('warehouseId') warehouseId: string,
     @Query('status') status?: string,
@@ -82,7 +82,7 @@ export class WarehousesController {
   @Get('warehouse/long-storage')
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('ADMIN', 'WORKER')
+  @Roles('ADMIN', 'WAREHOUSE_WORKER')
   longStorage(
     @Query('warehouseId') warehouseId: string,
     @Query('days') days?: string,

@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import * as PDFDocument from 'pdfkit';
+import PDFDocument = require('pdfkit');
 import * as QRCode from 'qrcode';
 
 @Injectable()
@@ -14,7 +14,7 @@ export class PdfService {
       where: { id: boxId },
       include: {
         customer: { select: { fullName: true, clientCode: true, phone: true } },
-        warehouse: { select: { name: true, city: true } },
+        warehouse: { select: { name: true, address: true } },
         parcels: { select: { id: true } },
       },
     });
@@ -153,12 +153,13 @@ export class PdfService {
       doc.text(`Phone: ${box.customer?.phone || '—'}`);
       doc.moveDown(0.5);
 
-      doc.text(`Amount: ${Number(box.payment.amount).toFixed(2)} ${box.payment.currency}`);
-      doc.text(`Method: ${box.payment.method}`);
-      doc.text(`Date: ${box.payment.paidAt ? new Date(box.payment.paidAt).toLocaleString('ru-RU') : '—'}`);
+      const pay = box.payment!;
+      doc.text(`Amount: ${Number(pay.amount).toFixed(2)} ${pay.currency}`);
+      doc.text(`Method: ${pay.method}`);
+      doc.text(`Date: ${pay.paidAt ? new Date(pay.paidAt).toLocaleString('ru-RU') : '—'}`);
 
-      if (box.payment.exchangeRate) {
-        doc.text(`Exchange rate: ${Number(box.payment.exchangeRate).toFixed(4)}`);
+      if (pay.exchangeRate) {
+        doc.text(`Exchange rate: ${Number(pay.exchangeRate).toFixed(4)}`);
       }
 
       doc.moveDown();
@@ -193,7 +194,7 @@ export class PdfService {
 
       doc.fontSize(18).font('Helvetica-Bold').text('Your Client Code', { align: 'center' });
       doc.moveDown(0.5);
-      doc.fontSize(24).text(user.clientCode, { align: 'center' });
+      doc.fontSize(24).text(user.clientCode!, { align: 'center' });
       doc.moveDown();
 
       // QR
@@ -209,7 +210,7 @@ export class PdfService {
         doc.moveDown(0.5);
         doc.fontSize(10).font('Helvetica');
         for (const wh of warehouses) {
-          doc.text(`${wh.name} (${wh.city})`);
+          doc.text(`${wh.name}`);
           doc.text(`${wh.address || ''}`);
           if (wh.phone) doc.text(`Tel: ${wh.phone}`);
           doc.moveDown(0.5);

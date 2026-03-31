@@ -10,7 +10,7 @@ export function LanguageSwitcher() {
       <button
         onClick={() => setLocale('ru')}
         className={`rounded px-2.5 py-1 text-xs font-medium transition-colors ${
-          locale === 'ru' ? 'bg-blue-600 text-white' : 'text-gray-500 hover:bg-gray-100'
+          locale === 'ru' ? 'bg-blue-600 text-white' : 'text-slate-500 hover:bg-slate-100'
         }`}
       >
         RU
@@ -18,10 +18,10 @@ export function LanguageSwitcher() {
       <button
         onClick={() => setLocale('tg')}
         className={`rounded px-2.5 py-1 text-xs font-medium transition-colors ${
-          locale === 'tg' ? 'bg-blue-600 text-white' : 'text-gray-500 hover:bg-gray-100'
+          locale === 'tg' ? 'bg-blue-600 text-white' : 'text-slate-500 hover:bg-slate-100'
         }`}
       >
-        TG
+        TJ
       </button>
     </div>
   );

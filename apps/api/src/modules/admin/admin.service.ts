@@ -674,6 +674,48 @@ export class AdminService {
     return { sent: notifications.count };
   }
 
+  // ─── Unidentified Parcels ──────────────────────────────────────────────────
+
+  async listUnidentifiedParcels() {
+    return this.prisma.parcel.findMany({
+      where: { isUnidentified: true },
+      include: {
+        warehouse: { select: { name: true } },
+        photos: { select: { url: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  // ─── List Boxes ────────────────────────────────────────────────────────────
+
+  async listBoxes(query: { status?: string; page?: string; limit?: string }) {
+    const page = parseInt(query.page || '1', 10);
+    const limit = parseInt(query.limit || '20', 10);
+    const where: any = {};
+    if (query.status) where.status = query.status;
+
+    const [items, total] = await Promise.all([
+      this.prisma.consolidationBox.findMany({
+        where,
+        include: {
+          customer: { select: { id: true, fullName: true, clientCode: true, phone: true } },
+          warehouse: { select: { name: true } },
+          batch: { select: { batchCode: true, route: true } },
+          _count: { select: { parcels: true } },
+          payment: { select: { id: true, status: true } },
+          statusLog: { orderBy: { createdAt: 'asc' } },
+        },
+        orderBy: { createdAt: 'desc' },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      this.prisma.consolidationBox.count({ where }),
+    ]);
+
+    return { items, total, page, limit };
+  }
+
   // ─── Box Price Override ─────────────────────────────────────────────────────
 
   async overrideBoxPrice(boxId: string, newPrice: number) {
@@ -858,9 +900,9 @@ export class AdminService {
             trackingNumber: tracking,
             customerId,
             warehouseId,
-            marketplace: marketIdx >= 0 ? cols[marketIdx] || null : null,
+            marketplace: marketIdx >= 0 ? (cols[marketIdx] as any) || null : null,
             weightKg: weightIdx >= 0 && cols[weightIdx] ? parseFloat(cols[weightIdx]) : null,
-            category: categoryIdx >= 0 ? cols[categoryIdx] || null : null,
+            category: categoryIdx >= 0 ? (cols[categoryIdx] as any) || null : null,
             status: 'RECEIVED',
             receivedAt: new Date(),
             isUnidentified: !customerId,
