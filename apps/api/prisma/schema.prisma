@@ -151,6 +151,7 @@ model User {
   notifications   Notification[]
   expenses        Expense[]
   auditLogs       AuditLog[]
+  partnerShipments PartnerShipment[] @relation("PartnerShipmentCustomer")
 
   createdAt       DateTime  @default(now()) @map("created_at")
   updatedAt       DateTime  @updatedAt @map("updated_at")
@@ -323,6 +324,7 @@ model ConsolidationBox {
   statusLog        BoxStatusLog[]
   payment          Payment?
   expenses         Expense[] @relation("BoxExpenses")
+  partnerShipment  PartnerShipment?
 
   createdAt        DateTime  @default(now()) @map("created_at")
   updatedAt        DateTime  @updatedAt @map("updated_at")
@@ -517,7 +519,105 @@ model Expense {
   @@map("expenses")
 }
 
-// ─── 20. Audit Log ───────────────────────────────────────────────────────────
+// ─── 20. Partners (Партнёрские карго) ─────────────────────────────────────
+
+enum PartnerIntegration {
+  MANUAL   // оператор вручную обновляет
+  WEBHOOK  // партнёр отправляет webhook
+  API      // двусторонний API обмен
+}
+
+enum PartnerShipmentStatus {
+  CREATED
+  PICKED_UP
+  IN_TRANSIT
+  CUSTOMS
+  ARRIVED
+  DELIVERED
+  CANCELLED
+}
+
+model Partner {
+  id                  String              @id @default(uuid()) @db.Uuid
+  name                String              // "China Express", "Silk Cargo"
+  code                String              @unique // "CHINAEXP", короткий код
+  integration         PartnerIntegration  @default(MANUAL)
+  apiKey              String?             @unique @map("api_key") // для WEBHOOK/API
+  apiSecret           String?             @map("api_secret")
+  apiBaseUrl          String?             @map("api_base_url") // для API-интеграции
+  webhookUrl          String?             @map("webhook_url") // URL куда мы шлём запросы
+  trackingUrlTemplate String?             @map("tracking_url_template") // "https://partner.com/track/{code}"
+  contactPhone        String?             @map("contact_phone")
+  contactEmail        String?             @map("contact_email")
+  contactPerson       String?             @map("contact_person")
+  notes               String?
+  isActive            Boolean             @default(true) @map("is_active")
+
+  shipments           PartnerShipment[]
+  statusMappings      PartnerStatusMapping[]
+
+  createdAt           DateTime            @default(now()) @map("created_at")
+  updatedAt           DateTime            @updatedAt @map("updated_at")
+
+  @@map("partners")
+}
+
+model PartnerShipment {
+  id                   String                @id @default(uuid()) @db.Uuid
+  partnerId            String                @map("partner_id") @db.Uuid
+  partner              Partner               @relation(fields: [partnerId], references: [id])
+  partnerTrackingCode  String                @map("partner_tracking_code")
+  status               PartnerShipmentStatus @default(CREATED)
+  partnerStatus        String?               @map("partner_status") // сырой статус от партнёра
+  estimatedDelivery    DateTime?             @map("estimated_delivery")
+  actualDelivery       DateTime?             @map("actual_delivery")
+  lastSyncAt           DateTime?             @map("last_sync_at")
+  notes                String?
+
+  // Привязка к вашей коробке
+  boxId                String?               @unique @map("box_id") @db.Uuid
+  box                  ConsolidationBox?     @relation(fields: [boxId], references: [id])
+
+  // Привязка к клиенту (если коробка ещё не создана)
+  customerId           String?               @map("customer_id") @db.Uuid
+  customer             User?                 @relation("PartnerShipmentCustomer", fields: [customerId], references: [id])
+
+  statusHistory        PartnerShipmentLog[]
+
+  createdAt            DateTime              @default(now()) @map("created_at")
+  updatedAt            DateTime              @updatedAt @map("updated_at")
+
+  @@unique([partnerId, partnerTrackingCode])
+  @@index([status])
+  @@map("partner_shipments")
+}
+
+model PartnerShipmentLog {
+  id          String                @id @default(uuid()) @db.Uuid
+  shipmentId  String                @map("shipment_id") @db.Uuid
+  shipment    PartnerShipment       @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+  status      PartnerShipmentStatus
+  rawStatus   String?               @map("raw_status") // сырой статус от партнёра
+  location    String?
+  comment     String?
+  source      String                @default("manual") // "manual", "webhook", "api_poll"
+  createdAt   DateTime              @default(now()) @map("created_at")
+
+  @@map("partner_shipment_logs")
+}
+
+model PartnerStatusMapping {
+  id              String                @id @default(uuid()) @db.Uuid
+  partnerId       String                @map("partner_id") @db.Uuid
+  partner         Partner               @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+  partnerStatus   String                @map("partner_status") // статус партнёра "в пути"
+  mappedStatus    PartnerShipmentStatus @map("mapped_status") // наш статус IN_TRANSIT
+
+  @@unique([partnerId, partnerStatus])
+  @@map("partner_status_mappings")
+}
+
+// ─── 21. Audit Log ───────────────────────────────────────────────────────────
 
 model AuditLog {
   id         String   @id @default(uuid()) @db.Uuid

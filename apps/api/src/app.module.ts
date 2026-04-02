@@ -18,6 +18,7 @@ import { PdfModule } from './modules/pdf/pdf.module';
 import { AdminModule } from './modules/admin/admin.module';
 import { CronModule } from './modules/cron/cron.module';
 import { UploadModule } from './modules/upload/upload.module';
+import { PartnersModule } from './modules/partners/partners.module';
 
 @Module({
   imports: [
@@ -40,6 +41,7 @@ import { UploadModule } from './modules/upload/upload.module';
     AdminModule,
     CronModule,
     UploadModule,
+    PartnersModule,
   ],
 })
 export class AppModule {}

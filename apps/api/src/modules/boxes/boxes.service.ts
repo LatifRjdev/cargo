@@ -283,6 +283,12 @@ export class BoxesService {
           parcels: true,
           warehouse: true,
           statusLog: { orderBy: { createdAt: 'desc' } },
+          partnerShipment: {
+            include: {
+              partner: { select: { name: true, code: true, trackingUrlTemplate: true } },
+              statusHistory: { orderBy: { createdAt: 'desc' }, take: 3 },
+            },
+          },
         },
         orderBy: { createdAt: 'desc' },
         skip,

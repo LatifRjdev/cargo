@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { PartnersService } from '../partners/partners.service';
 
 const EXCHANGE_API_URL = 'https://open.er-api.com/v6/latest/USD';
 
@@ -12,7 +13,22 @@ export class CronService {
   constructor(
     private prisma: PrismaService,
     private notifications: NotificationsService,
+    private partners: PartnersService,
   ) {}
+
+  /**
+   * Every 30 minutes — poll partner APIs for status updates (Level 3)
+   */
+  @Cron('0 */30 * * * *')
+  async pollPartnerApis() {
+    this.logger.log('Polling partner APIs...');
+    try {
+      const result = await this.partners.pollAllApiPartners();
+      this.logger.log(`Partner API poll: ${result.synced} synced, ${result.errors} errors`);
+    } catch (err: any) {
+      this.logger.error(`Partner API poll failed: ${err.message}`);
+    }
+  }
 
   /**
    * Daily at 09:00 — check for parcels stored too long (> 30 days)
