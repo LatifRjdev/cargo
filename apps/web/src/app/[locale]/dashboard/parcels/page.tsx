@@ -27,7 +27,8 @@ interface UnidentifiedParcel {
 }
 
 interface ParcelsResponse {
-  data: Parcel[];
+  items?: Parcel[];
+  data?: Parcel[];
   total: number;
 }
 
