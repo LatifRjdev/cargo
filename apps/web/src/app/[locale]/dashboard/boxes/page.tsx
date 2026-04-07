@@ -143,7 +143,7 @@ export default function BoxesPage() {
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {boxes.map((box) => (
-            <div key={box.id} className={`bg-white rounded-2xl border border-slate-200/80 border-t-[3px] ${STATUS_BORDER_COLORS[box.status] || 'border-t-slate-300'} shadow-sm hover:shadow-md transition-all p-5`}>
+            <a key={box.id} href={`/${locale}/dashboard/boxes/${box.id}`} className={`block bg-white rounded-2xl border border-slate-200/80 border-t-[3px] ${STATUS_BORDER_COLORS[box.status] || 'border-t-slate-300'} shadow-sm hover:shadow-md transition-all p-5 cursor-pointer`}>
               <div className="flex items-center justify-between mb-3">
                 <span className="font-bold text-slate-900">{box.boxCode}</span>
                 <span className={`inline-flex items-center rounded-md border px-2.5 py-0.5 text-xs font-medium ${
@@ -173,7 +173,7 @@ export default function BoxesPage() {
                   <span className="text-slate-700 font-medium">{new Date(box.createdAt).toLocaleDateString('ru-RU')}</span>
                 </div>
               </div>
-            </div>
+            </a>
           ))}
         </div>
       )}

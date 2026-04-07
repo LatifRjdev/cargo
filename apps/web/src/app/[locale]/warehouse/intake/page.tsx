@@ -29,7 +29,7 @@ interface IntakeResult {
 export default function IntakePage() {
   const { user } = useAuth();
   const { t, locale } = useI18n();
-  const stepLabels = [t.admin.customer, t.parcels.marketplace, t.common.weight, t.common.details];
+  const stepLabels = [t.admin.customer, t.parcels.marketplace, t.common.weight, t.common.details, t.parcels.photos];
   const [step, setStep] = useState(1);
   const [mode, setMode] = useState<'identified' | 'unidentified'>('identified');
   const [loading, setLoading] = useState(false);
@@ -50,6 +50,9 @@ export default function IntakePage() {
   const [damaged, setDamaged] = useState(false);
   const [damageDescription, setDamageDescription] = useState('');
   const [showScanner, setShowScanner] = useState(false);
+  const [photos, setPhotos] = useState<File[]>([]);
+  const [photoPreviews, setPhotoPreviews] = useState<string[]>([]);
+  const [uploadingPhotos, setUploadingPhotos] = useState(false);
 
   const handleQrScan = useCallback((result: string) => {
     setShowScanner(false);
@@ -75,6 +78,8 @@ export default function IntakePage() {
     setFragile(false);
     setDamaged(false);
     setDamageDescription('');
+    setPhotos([]);
+    setPhotoPreviews([]);
   };
 
   const handleSubmit = async () => {
@@ -187,7 +192,7 @@ export default function IntakePage() {
 
       {/* Step indicator */}
       <div className="flex items-center gap-2">
-        {[1, 2, 3, 4].map((s) => (
+        {[1, 2, 3, 4, 5].map((s) => (
           <div key={s} className="flex items-center gap-2">
             <div className="flex flex-col items-center">
               <div
@@ -205,7 +210,7 @@ export default function IntakePage() {
                 {stepLabels[s - 1]}
               </span>
             </div>
-            {s < 4 && <div className={`w-8 h-0.5 mb-4 ${s < step ? 'bg-emerald-300' : 'bg-slate-200'}`} />}
+            {s < 5 && <div className={`w-6 h-0.5 mb-4 ${s < step ? 'bg-emerald-300' : 'bg-slate-200'}`} />}
           </div>
         ))}
       </div>
@@ -443,11 +448,144 @@ export default function IntakePage() {
                 {t.common.back}
               </button>
               <button
-                onClick={handleSubmit}
-                disabled={loading || !category}
+                onClick={() => setStep(5)}
+                disabled={!category}
+                className="flex-1 rounded-xl bg-amber-600 shadow-sm shadow-amber-200 px-4 py-2.5 text-sm font-medium text-white hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {t.common.next}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Step 5: Photos */}
+        {step === 5 && (
+          <div className="space-y-4">
+            <h3 className="font-semibold text-slate-900">{t.parcels.photos}</h3>
+            <p className="text-sm text-slate-500">Сфотографируйте посылку (до 5 фото)</p>
+
+            {/* Photo previews */}
+            {photoPreviews.length > 0 && (
+              <div className="grid grid-cols-3 gap-2">
+                {photoPreviews.map((src, i) => (
+                  <div key={i} className="relative aspect-square rounded-xl overflow-hidden border border-slate-200">
+                    <img src={src} alt={`Photo ${i + 1}`} className="w-full h-full object-cover" />
+                    <button
+                      onClick={() => {
+                        setPhotos(prev => prev.filter((_, idx) => idx !== i));
+                        setPhotoPreviews(prev => prev.filter((_, idx) => idx !== i));
+                      }}
+                      className="absolute top-1 right-1 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Add photo buttons */}
+            {photos.length < 5 && (
+              <div className="flex gap-2">
+                {/* Camera capture */}
+                <label className="flex-1 flex items-center justify-center gap-2 rounded-xl border-2 border-dashed border-amber-300 bg-amber-50 px-4 py-6 cursor-pointer hover:bg-amber-100 transition-colors">
+                  <svg className="w-6 h-6 text-amber-600" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" /><path strokeLinecap="round" strokeLinejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0z" /></svg>
+                  <span className="text-sm font-medium text-amber-700">Камера</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        setPhotos(prev => [...prev, file]);
+                        setPhotoPreviews(prev => [...prev, URL.createObjectURL(file)]);
+                      }
+                      e.target.value = '';
+                    }}
+                  />
+                </label>
+                {/* File picker */}
+                <label className="flex-1 flex items-center justify-center gap-2 rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 px-4 py-6 cursor-pointer hover:bg-slate-100 transition-colors">
+                  <svg className="w-6 h-6 text-slate-500" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909M3.75 21h16.5A2.25 2.25 0 0022.5 18.75V5.25A2.25 2.25 0 0020.25 3H3.75A2.25 2.25 0 001.5 5.25v13.5A2.25 2.25 0 003.75 21z" /></svg>
+                  <span className="text-sm font-medium text-slate-600">Файл</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    className="hidden"
+                    onChange={(e) => {
+                      const files = Array.from(e.target.files || []).slice(0, 5 - photos.length);
+                      setPhotos(prev => [...prev, ...files]);
+                      setPhotoPreviews(prev => [...prev, ...files.map(f => URL.createObjectURL(f))]);
+                      e.target.value = '';
+                    }}
+                  />
+                </label>
+              </div>
+            )}
+
+            <p className="text-xs text-slate-400">{photos.length}/5 фото добавлено</p>
+
+            <div className="flex gap-2">
+              <button
+                onClick={() => setStep(4)}
+                className="flex-1 rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors"
+              >
+                {t.common.back}
+              </button>
+              <button
+                onClick={async () => {
+                  setUploadingPhotos(true);
+                  setLoading(true);
+                  setError('');
+                  try {
+                    // 1. Submit intake
+                    const body: Record<string, unknown> = {
+                      marketplace, weight: parseFloat(weight),
+                      length: parseFloat(length) || undefined, width: parseFloat(width) || undefined, height: parseFloat(height) || undefined,
+                      category, description, fragile, damaged,
+                      damageDescription: damaged ? damageDescription : undefined,
+                    };
+                    let endpoint: string;
+                    if (mode === 'identified') { body.clientCode = clientCode; endpoint = '/warehouse/parcels/intake'; }
+                    else { body.phoneOnLabel = phoneOnLabel; endpoint = '/warehouse/parcels/intake/unidentified'; }
+
+                    const data = await apiFetch<any>(endpoint, { method: 'POST', body: JSON.stringify(body) });
+
+                    // 2. Upload photos
+                    if (photos.length > 0 && data.id) {
+                      for (const photo of photos) {
+                        const formData = new FormData();
+                        formData.append('file', photo);
+                        try {
+                          await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'}/warehouse/parcels/${data.id}/photos/upload?type=intake`, {
+                            method: 'POST',
+                            headers: { 'Authorization': `Bearer ${localStorage.getItem('accessToken')}` },
+                            body: formData,
+                          });
+                        } catch { /* continue with other photos */ }
+                      }
+                    }
+
+                    setResult(data);
+                  } catch (err: any) {
+                    setError(err.message || t.common.error);
+                  } finally {
+                    setLoading(false);
+                    setUploadingPhotos(false);
+                  }
+                }}
+                disabled={loading}
                 className="flex-1 rounded-xl bg-emerald-600 shadow-sm shadow-emerald-200 px-4 py-2.5 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
-                {loading ? t.common.saving : t.common.confirm}
+                {uploadingPhotos ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                    Загрузка фото...
+                  </span>
+                ) : loading ? t.common.saving : t.common.confirm}
               </button>
             </div>
           </div>
