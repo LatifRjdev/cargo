@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import { apiFetch } from '@/lib/api';
@@ -24,6 +24,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [headerSearch, setHeaderSearch] = useState('');
   const [searchResults, setSearchResults] = useState<any>(null);
   const [searching, setSearching] = useState(false);
+  const [selectedResultIdx, setSelectedResultIdx] = useState(-1);
+  const debounceRef = useRef<NodeJS.Timeout | null>(null);
   const [openDropdown, setOpenDropdown] = useState<'none' | 'notifications' | 'profile' | 'search'>('none');
   const [notifications, setNotifications] = useState<any[]>([]);
   const [notiLoading, setNotiLoading] = useState(false);
@@ -53,13 +55,58 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }, []);
 
   const doSearch = async (q: string) => {
-    if (!q.trim()) { setSearchResults(null); return; }
+    if (!q.trim()) { setSearchResults(null); setSelectedResultIdx(-1); return; }
     setSearching(true);
     try {
-      setSearchResults(await apiFetch<any>(`/admin/search?q=${encodeURIComponent(q.trim())}`));
+      const res = await apiFetch<any>(`/admin/search?q=${encodeURIComponent(q.trim())}`);
+      setSearchResults(res);
+      setSelectedResultIdx(-1);
       setOpenDropdown('search');
     } catch { setSearchResults(null); }
     finally { setSearching(false); }
+  };
+
+  const handleSearchInput = useCallback((value: string) => {
+    setHeaderSearch(value);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    if (!value.trim()) { setSearchResults(null); setSelectedResultIdx(-1); return; }
+    debounceRef.current = setTimeout(() => doSearch(value), 300);
+  }, []);
+
+  // Build flat list of clickable results for keyboard nav
+  const flatResults = (() => {
+    if (!searchResults) return [];
+    const items: { type: string; label: string; sub: string; href: string }[] = [];
+    (searchResults.clients || []).forEach((c: any) => items.push({
+      type: 'client', label: c.fullName || c.phone, sub: c.clientCode || '', href: `/${locale}/admin/users/${c.id}`,
+    }));
+    (searchResults.parcels || []).forEach((p: any) => items.push({
+      type: 'parcel', label: p.trackingNumber, sub: p.status || '', href: `/${locale}/admin/boxes`,
+    }));
+    (searchResults.boxes || []).forEach((b: any) => items.push({
+      type: 'box', label: b.boxCode, sub: b.status || '', href: `/${locale}/admin/boxes`,
+    }));
+    (searchResults.batches || []).forEach((b: any) => items.push({
+      type: 'batch', label: b.batchCode, sub: b.route || '', href: `/${locale}/admin/boxes`,
+    }));
+    return items;
+  })();
+
+  const handleSearchKeyDown = (e: React.KeyboardEvent) => {
+    if (openDropdown !== 'search' || flatResults.length === 0) return;
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setSelectedResultIdx((prev) => (prev + 1) % flatResults.length);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setSelectedResultIdx((prev) => (prev <= 0 ? flatResults.length - 1 : prev - 1));
+    } else if (e.key === 'Enter' && selectedResultIdx >= 0) {
+      e.preventDefault();
+      const item = flatResults[selectedResultIdx];
+      if (item) { router.push(item.href); setOpenDropdown('none'); setSearchResults(null); setHeaderSearch(''); }
+    } else if (e.key === 'Escape') {
+      setOpenDropdown('none'); setSearchResults(null); setSelectedResultIdx(-1);
+    }
   };
 
   const loadNotifications = async () => {
@@ -103,6 +150,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       label: t.nav.analytics,
       items: [
         { href: `/${locale}/admin/reports`, label: t.nav.reports, icon: 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z' },
+        { href: `/${locale}/admin/analytics`, label: 'Аналитика клиентов', icon: 'M16 8v8m-4-5v5m-4-2v2m-2 4h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z' },
         { href: `/${locale}/admin/audit`, label: t.nav.audit, icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01' },
       ],
     },
@@ -219,38 +267,109 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               <div className="hidden md:block relative" data-dropdown>
                 <form className="flex items-center bg-slate-50 rounded-xl border border-slate-200 px-3 py-2 w-72 focus-within:border-blue-400 focus-within:ring-2 focus-within:ring-blue-100 transition-all" onSubmit={(e) => { e.preventDefault(); doSearch(headerSearch); }}>
                   <svg className="w-4 h-4 text-slate-400 mr-2 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
-                  <input id="header-search" type="text" value={headerSearch} onChange={(e) => setHeaderSearch(e.target.value)} placeholder={t.admin.searchPlaceholder} className="bg-transparent text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none flex-1" />
+                  <input id="header-search" type="text" value={headerSearch} onChange={(e) => handleSearchInput(e.target.value)} onKeyDown={handleSearchKeyDown} placeholder={t.admin.searchPlaceholder} className="bg-transparent text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none flex-1" />
                   {searching ? <div className="h-4 w-4 animate-spin rounded-full border-2 border-slate-200 border-t-blue-600" /> : <kbd className="hidden lg:inline-flex items-center gap-0.5 rounded border border-slate-200 bg-white px-1.5 py-0.5 text-[10px] font-medium text-slate-400"><span className="text-xs">⌘</span>K</kbd>}
                 </form>
-                {openDropdown === 'search' && searchResults && (
-                  <div className="absolute left-0 top-full mt-2 w-96 max-w-[calc(100vw-2rem)] bg-white rounded-2xl border border-slate-200 shadow-2xl max-h-80 overflow-y-auto">
+                {openDropdown === 'search' && searchResults && (() => {
+                  const clientCount = searchResults.clients?.length || 0;
+                  const parcelCount = searchResults.parcels?.length || 0;
+                  const boxCount = searchResults.boxes?.length || 0;
+                  const batchCount = searchResults.batches?.length || 0;
+                  const totalCount = clientCount + parcelCount + boxCount + batchCount;
+                  let runningIdx = -1;
+                  return (
+                  <div className="absolute left-0 top-full mt-2 w-96 max-w-[calc(100vw-2rem)] bg-white rounded-2xl border border-slate-200 shadow-2xl max-h-96 overflow-y-auto">
                     <div className="px-4 py-2.5 border-b border-slate-100 flex justify-between items-center">
-                      <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Результаты</span>
-                      <button onClick={() => { setOpenDropdown('none'); setSearchResults(null); setHeaderSearch(''); }} className="text-xs text-slate-400 hover:text-slate-600">{t.common.close}</button>
+                      <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Результаты <span className="ml-1 inline-flex items-center justify-center px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-600 text-[10px] font-bold">{totalCount}</span></span>
+                      <button onClick={() => { setOpenDropdown('none'); setSearchResults(null); setHeaderSearch(''); setSelectedResultIdx(-1); }} className="text-xs text-slate-400 hover:text-slate-600">{t.common.close}</button>
                     </div>
-                    {searchResults.clients?.map((c: any) => (
-                      <a key={c.id} href={`/${locale}/admin/users/${c.id}`} className="flex items-center gap-3 px-4 py-2.5 hover:bg-blue-50 transition-colors">
-                        <div className="w-7 h-7 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-xs font-bold">{(c.fullName || '?')[0]}</div>
-                        <div><p className="text-sm font-medium text-slate-700">{c.fullName || c.phone}</p><p className="text-[11px] text-slate-400">{c.clientCode}</p></div>
-                      </a>
-                    ))}
-                    {searchResults.parcels?.map((p: any) => (
-                      <div key={p.id} className="flex items-center gap-3 px-4 py-2.5 hover:bg-blue-50 transition-colors">
-                        <div className="w-7 h-7 rounded-full bg-slate-100 flex items-center justify-center"><svg className="w-3.5 h-3.5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg></div>
-                        <p className="text-sm font-mono text-slate-700">{p.trackingNumber}</p>
+                    {clientCount > 0 && (
+                      <div>
+                        <div className="px-4 py-1.5 bg-slate-50 flex items-center gap-2">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Клиенты</span>
+                          <span className="inline-flex items-center justify-center px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-700 text-[10px] font-bold">{clientCount}</span>
+                        </div>
+                        {searchResults.clients.map((c: any) => {
+                          runningIdx++;
+                          const idx = runningIdx;
+                          return (
+                          <a key={c.id} href={`/${locale}/admin/users/${c.id}`} onClick={() => { setOpenDropdown('none'); setSearchResults(null); setHeaderSearch(''); }} className={`flex items-center gap-3 px-4 py-2.5 transition-colors cursor-pointer ${selectedResultIdx === idx ? 'bg-blue-50 ring-1 ring-inset ring-blue-200' : 'hover:bg-blue-50'}`}>
+                            <div className="w-7 h-7 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-xs font-bold">{(c.fullName || '?')[0]}</div>
+                            <div className="flex-1 min-w-0"><p className="text-sm font-medium text-slate-700 truncate">{c.fullName || c.phone}</p><p className="text-[11px] text-slate-400">{c.clientCode}</p></div>
+                            <svg className="w-3.5 h-3.5 text-slate-300 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                          </a>
+                          );
+                        })}
                       </div>
-                    ))}
-                    {searchResults.boxes?.map((b: any) => (
-                      <div key={b.id} className="flex items-center gap-3 px-4 py-2.5 hover:bg-blue-50 transition-colors">
-                        <div className="w-7 h-7 rounded-full bg-slate-100 flex items-center justify-center"><svg className="w-3.5 h-3.5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8" /></svg></div>
-                        <p className="text-sm font-mono text-slate-700">{b.boxCode}</p>
+                    )}
+                    {parcelCount > 0 && (
+                      <div>
+                        <div className="px-4 py-1.5 bg-slate-50 flex items-center gap-2">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Посылки</span>
+                          <span className="inline-flex items-center justify-center px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 text-[10px] font-bold">{parcelCount}</span>
+                        </div>
+                        {searchResults.parcels.map((p: any) => {
+                          runningIdx++;
+                          const idx = runningIdx;
+                          return (
+                          <a key={p.id} href={`/${locale}/admin/boxes`} onClick={() => { setOpenDropdown('none'); setSearchResults(null); setHeaderSearch(''); }} className={`flex items-center gap-3 px-4 py-2.5 transition-colors cursor-pointer ${selectedResultIdx === idx ? 'bg-blue-50 ring-1 ring-inset ring-blue-200' : 'hover:bg-blue-50'}`}>
+                            <div className="w-7 h-7 rounded-full bg-amber-50 flex items-center justify-center"><svg className="w-3.5 h-3.5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg></div>
+                            <div className="flex-1 min-w-0"><p className="text-sm font-mono text-slate-700">{p.trackingNumber}</p><p className="text-[11px] text-slate-400">{p.status}</p></div>
+                            <svg className="w-3.5 h-3.5 text-slate-300 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                          </a>
+                          );
+                        })}
                       </div>
-                    ))}
-                    {!searchResults.clients?.length && !searchResults.parcels?.length && !searchResults.boxes?.length && (
+                    )}
+                    {boxCount > 0 && (
+                      <div>
+                        <div className="px-4 py-1.5 bg-slate-50 flex items-center gap-2">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Коробки</span>
+                          <span className="inline-flex items-center justify-center px-1.5 py-0.5 rounded-full bg-green-100 text-green-700 text-[10px] font-bold">{boxCount}</span>
+                        </div>
+                        {searchResults.boxes.map((b: any) => {
+                          runningIdx++;
+                          const idx = runningIdx;
+                          return (
+                          <a key={b.id} href={`/${locale}/admin/boxes`} onClick={() => { setOpenDropdown('none'); setSearchResults(null); setHeaderSearch(''); }} className={`flex items-center gap-3 px-4 py-2.5 transition-colors cursor-pointer ${selectedResultIdx === idx ? 'bg-blue-50 ring-1 ring-inset ring-blue-200' : 'hover:bg-blue-50'}`}>
+                            <div className="w-7 h-7 rounded-full bg-green-50 flex items-center justify-center"><svg className="w-3.5 h-3.5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8" /></svg></div>
+                            <div className="flex-1 min-w-0"><p className="text-sm font-mono text-slate-700">{b.boxCode}</p><p className="text-[11px] text-slate-400">{b.status}</p></div>
+                            <svg className="w-3.5 h-3.5 text-slate-300 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                          </a>
+                          );
+                        })}
+                      </div>
+                    )}
+                    {batchCount > 0 && (
+                      <div>
+                        <div className="px-4 py-1.5 bg-slate-50 flex items-center gap-2">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Партии</span>
+                          <span className="inline-flex items-center justify-center px-1.5 py-0.5 rounded-full bg-purple-100 text-purple-700 text-[10px] font-bold">{batchCount}</span>
+                        </div>
+                        {searchResults.batches.map((b: any) => {
+                          runningIdx++;
+                          const idx = runningIdx;
+                          return (
+                          <a key={b.id} href={`/${locale}/admin/boxes`} onClick={() => { setOpenDropdown('none'); setSearchResults(null); setHeaderSearch(''); }} className={`flex items-center gap-3 px-4 py-2.5 transition-colors cursor-pointer ${selectedResultIdx === idx ? 'bg-blue-50 ring-1 ring-inset ring-blue-200' : 'hover:bg-blue-50'}`}>
+                            <div className="w-7 h-7 rounded-full bg-purple-50 flex items-center justify-center"><svg className="w-3.5 h-3.5 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" /></svg></div>
+                            <div className="flex-1 min-w-0"><p className="text-sm font-mono text-slate-700">{b.batchCode}</p><p className="text-[11px] text-slate-400">{b.route}</p></div>
+                            <svg className="w-3.5 h-3.5 text-slate-300 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                          </a>
+                          );
+                        })}
+                      </div>
+                    )}
+                    {totalCount === 0 && (
                       <div className="px-4 py-6 text-center text-sm text-slate-400">{t.common.notFound}</div>
                     )}
+                    {totalCount > 0 && (
+                      <div className="px-4 py-2 border-t border-slate-100 text-center">
+                        <span className="text-[10px] text-slate-400">↑↓ навигация · Enter выбрать · Esc закрыть</span>
+                      </div>
+                    )}
                   </div>
-                )}
+                  );
+                })()}
               </div>
             </div>
             <div className="flex items-center gap-2">

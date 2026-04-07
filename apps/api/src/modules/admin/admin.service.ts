@@ -863,6 +863,47 @@ export class AdminService {
     });
   }
 
+  // ─── Customer Analytics ────────────────────────────────────────────────────
+
+  async getCustomerAnalytics() {
+    const customers = await this.prisma.user.findMany({
+      where: { role: 'CUSTOMER' },
+      include: {
+        parcels: { select: { id: true, createdAt: true } },
+        boxes: {
+          select: { id: true, finalPrice: true, createdAt: true, status: true },
+        },
+        payments: { select: { amount: true, createdAt: true } },
+      },
+    });
+
+    return customers.map((c) => {
+      const totalSpent = (c as any).payments?.reduce((s: number, p: any) => s + Number(p.amount || 0), 0) || 0;
+      const boxCount = c.boxes.length;
+      const parcelCount = c.parcels.length;
+      const firstOrder = c.parcels[0]?.createdAt || c.createdAt;
+      const lastOrder = c.parcels[c.parcels.length - 1]?.createdAt || c.createdAt;
+      const daysSinceFirst = Math.max(1, Math.floor((Date.now() - new Date(firstOrder).getTime()) / 86400000));
+      const avgOrderValue = boxCount > 0 ? totalSpent / boxCount : 0;
+
+      return {
+        id: c.id,
+        fullName: c.fullName,
+        phone: c.phone,
+        clientCode: c.clientCode,
+        totalSpent: Math.round(totalSpent * 100) / 100,
+        parcelCount,
+        boxCount,
+        avgOrderValue: Math.round(avgOrderValue * 100) / 100,
+        ltv: Math.round(totalSpent * 100) / 100,
+        daysSinceFirst,
+        firstOrder,
+        lastOrder,
+        isActive: c.isActive,
+      };
+    }).sort((a, b) => b.totalSpent - a.totalSpent);
+  }
+
   // ─── Bulk Import ──────────────────────────────────────────────────────────
 
   async bulkImportParcels(csvText: string, warehouseId: string) {

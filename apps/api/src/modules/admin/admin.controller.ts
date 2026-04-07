@@ -296,6 +296,13 @@ export class AdminController {
     return this.adminService.deleteOrgTariff(orgId, tariffId);
   }
 
+  // ─── Customer Analytics ────────────────────────────────────────────────────
+
+  @Get('analytics/customers')
+  customerAnalytics() {
+    return this.adminService.getCustomerAnalytics();
+  }
+
   // ─── Bulk Import ──────────────────────────────────────────────────────────
 
   @Post('import/parcels')
