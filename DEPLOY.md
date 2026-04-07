@@ -30,24 +30,33 @@
 
 ---
 
-## Шаг 2: Деплой API (NestJS) на Railway
+## Шаг 2: Деплой API (NestJS) на Render
 
-1. Зайди на https://railway.app и залогинься через GitHub
-2. New Project → Deploy from GitHub repo → выбери `LatifRjdev/cargo`
-3. Настрой сервис:
-   - **Root Directory**: `apps/api`
-   - **Build Command**: `npx prisma generate && npx prisma migrate deploy && npm run build`
-   - **Start Command**: `node dist/main.js`
-4. Добавь переменные окружения (Variables):
-   ```
-   DATABASE_URL=postgresql://...  (из Шага 1)
-   JWT_SECRET=сгенерируй-длинный-случайный-ключ
-   JWT_EXPIRES_IN=7d
-   PORT=3001
-   BOT_TOKEN=токен-от-BotFather  (если есть)
-   ```
-5. Railway даст домен вида `cargo-api-xxx.up.railway.app`
-6. Запомни URL — он нужен для веба: `https://cargo-api-xxx.up.railway.app/api`
+1. Зайди на https://render.com и залогинься через GitHub
+2. **New** → **Web Service** → подключи `LatifRjdev/cargo`
+3. Настройки:
+   - **Name**: `cargo-api`
+   - **Region**: Oregon (US West) — ближе к Neon
+   - **Root Directory**: оставь пустым (корень монорепо)
+   - **Build Command**: `corepack enable && pnpm install --frozen-lockfile && cd apps/api && npx prisma generate && npx prisma migrate deploy && pnpm run build`
+   - **Start Command**: `node apps/api/dist/main.js`
+   - **Instance Type**: Free
+4. Добавь **Environment Variables**:
+
+   | Key | Value |
+   |-----|-------|
+   | `NODE_VERSION` | `20` |
+   | `NODE_ENV` | `production` |
+   | `DATABASE_URL` | Neon Pooled URL (с `&pgbouncer=true`) |
+   | `DIRECT_URL` | Neon Direct URL |
+   | `JWT_SECRET` | длинный случайный ключ |
+   | `JWT_EXPIRES_IN` | `7d` |
+   | `PORT` | `3001` |
+
+5. Нажми **Create Web Service**
+6. Render даст URL вида `https://cargo-api-xxxx.onrender.com`
+
+> **Или используй `render.yaml`** — Render автоматически подтянет конфигурацию из файла
 
 ---
 
