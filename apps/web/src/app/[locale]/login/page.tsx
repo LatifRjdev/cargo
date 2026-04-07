@@ -77,7 +77,7 @@ export default function LoginPage() {
             {[
               { value: '3', label: t.auth.warehouses },
               { value: '24/7', label: t.auth.support },
-              { value: '$6', label: t.auth.priceFrom },
+              { value: '$2.5', label: t.auth.priceFrom },
             ].map((s) => (
               <div key={s.label}>
                 <p className="text-3xl font-bold text-white">{s.value}</p>
