@@ -55,7 +55,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem('refreshToken');
     localStorage.removeItem('user');
     setUser(null);
-    router.push('/ru/login');
+    const savedLocale = localStorage.getItem('locale') || 'ru';
+    router.push(`/${savedLocale}/login`);
   };
 
   return (

@@ -97,7 +97,9 @@ export class AuthService implements OnModuleInit, OnModuleDestroy {
     await this.setOtp(`reg:${phone}`, { code, expiresAt: Date.now() + 5 * 60 * 1000, fullName });
 
     // TODO: integrate real SMS provider (Tajikistan-compatible)
-    console.log(`[OTP] Registration code for ${phone}: ${code}`);
+    if (this.config.get('NODE_ENV') !== 'production') {
+      console.log(`[OTP] Registration code for ${phone}: ${code}`);
+    }
 
     return { message: 'OTP отправлен', phone };
   }
@@ -185,7 +187,9 @@ export class AuthService implements OnModuleInit, OnModuleDestroy {
     await this.setOtp(`login:${phone}`, { code, expiresAt: Date.now() + 5 * 60 * 1000 });
 
     // TODO: integrate real SMS provider
-    console.log(`[OTP] Login code for ${phone}: ${code}`);
+    if (this.config.get('NODE_ENV') !== 'production') {
+      console.log(`[OTP] Login code for ${phone}: ${code}`);
+    }
 
     return { message: 'OTP отправлен', phone };
   }

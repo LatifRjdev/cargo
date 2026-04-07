@@ -1,9 +1,10 @@
 import { Controller, Get, Post, Patch, Delete, Param, Body, Query, Headers, UseGuards } from '@nestjs/common';
-import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
+import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { PartnersService } from './partners.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
+import { CreatePartnerDto, UpdatePartnerDto, CreatePartnerShipmentDto, UpdateShipmentStatusDto, CreateStatusMappingDto, WebhookDto } from './dto/partner.dto';
 
 @ApiTags('Partners')
 @Controller()
@@ -32,15 +33,15 @@ export class PartnersController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN')
   @Post('admin/partners')
-  create(@Body() body: any) {
-    return this.partnersService.createPartner(body);
+  create(@Body() body: CreatePartnerDto) {
+    return this.partnersService.createPartner({ ...body, integration: body.integration || 'MANUAL' });
   }
 
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN')
   @Patch('admin/partners/:id')
-  update(@Param('id') id: string, @Body() body: any) {
+  update(@Param('id') id: string, @Body() body: UpdatePartnerDto) {
     return this.partnersService.updatePartner(id, body);
   }
 
@@ -58,7 +59,7 @@ export class PartnersController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN')
   @Post('admin/partners/:id/mappings')
-  upsertMapping(@Param('id') id: string, @Body() body: { partnerStatus: string; mappedStatus: string }) {
+  upsertMapping(@Param('id') id: string, @Body() body: CreateStatusMappingDto) {
     return this.partnersService.upsertStatusMapping(id, body.partnerStatus, body.mappedStatus);
   }
 
@@ -93,7 +94,7 @@ export class PartnersController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN')
   @Post('admin/partner-shipments')
-  createShipment(@Body() body: any) {
+  createShipment(@Body() body: CreatePartnerShipmentDto) {
     return this.partnersService.createShipment(body);
   }
 
@@ -101,7 +102,7 @@ export class PartnersController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN')
   @Patch('admin/partner-shipments/:id/status')
-  updateStatus(@Param('id') id: string, @Body() body: { status: string; location?: string; comment?: string }) {
+  updateStatus(@Param('id') id: string, @Body() body: UpdateShipmentStatusDto) {
     return this.partnersService.updateShipmentStatus(id, body.status, { ...body, source: 'manual' });
   }
 
@@ -126,7 +127,7 @@ export class PartnersController {
   @Post('partner/webhook')
   webhook(
     @Headers('x-api-key') apiKey: string,
-    @Body() body: { trackingCode: string; status: string; location?: string; comment?: string; estimatedDelivery?: string },
+    @Body() body: WebhookDto,
   ) {
     return this.partnersService.handleWebhook(apiKey, body);
   }
