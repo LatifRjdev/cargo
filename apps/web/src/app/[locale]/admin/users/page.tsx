@@ -22,6 +22,8 @@ export default function AdminUsersPage() {
   const [roleFilter, setRoleFilter] = useState('');
   const [activeFilter, setActiveFilter] = useState('');
   const [search, setSearch] = useState('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [createName, setCreateName] = useState('');
   const [createPhone, setCreatePhone] = useState('');
@@ -47,12 +49,13 @@ export default function AdminUsersPage() {
     try {
       const params = new URLSearchParams(); params.set('page', page.toString()); params.set('limit', limit.toString());
       if (roleFilter) params.set('role', roleFilter); if (activeFilter) params.set('active', activeFilter); if (search.trim()) params.set('search', search.trim());
+      if (dateFrom) params.set('from', dateFrom); if (dateTo) params.set('to', dateTo);
       const data = await apiFetch<{ items: User[]; total: number }>(`/admin/users?${params}`);
       setUsers(data.items); setTotal(data.total);
     } catch {} finally { setLoading(false); }
   };
 
-  useEffect(() => { fetchUsers(); }, [page, roleFilter, activeFilter]);
+  useEffect(() => { fetchUsers(); }, [page, roleFilter, activeFilter, dateFrom, dateTo]);
 
   const handleSearch = () => { setPage(1); fetchUsers(); };
 
@@ -106,6 +109,16 @@ export default function AdminUsersPage() {
             <option value="true">{t.admin.activeUsers}</option>
             <option value="false">{t.admin.blockedUsers}</option>
           </select>
+          <input
+            type="date" value={dateFrom} onChange={(e) => { setDateFrom(e.target.value); setPage(1); }}
+            className="rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400"
+            placeholder="От"
+          />
+          <input
+            type="date" value={dateTo} onChange={(e) => { setDateTo(e.target.value); setPage(1); }}
+            className="rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400"
+            placeholder="До"
+          />
           <button onClick={handleSearch} className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 transition-colors">{t.common.find}</button>
         </div>
       </div>

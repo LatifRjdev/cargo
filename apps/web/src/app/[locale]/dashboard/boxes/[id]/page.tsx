@@ -79,7 +79,19 @@ export default function BoxDetailPage() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">{t.boxes.boxCode}</p>
-              <p className="text-2xl font-bold font-mono text-slate-900 mt-1">{box.boxCode}</p>
+              <div className="flex items-center gap-3 mt-1">
+                <p className="text-2xl font-bold font-mono text-slate-900">{box.boxCode}</p>
+                <button
+                  onClick={() => {
+                    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3002/api';
+                    window.open(`${apiUrl}/warehouse/boxes/${box.id}/label`, '_blank');
+                  }}
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-200 transition-colors"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
+                  Печать этикетки
+                </button>
+              </div>
             </div>
             <span className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-sm font-semibold ${sc.bg} ${sc.text} border`}>
               <span className={`w-2 h-2 rounded-full ${sc.dot}`} />
