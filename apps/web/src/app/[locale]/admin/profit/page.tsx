@@ -202,7 +202,7 @@ export default function ProfitPage() {
                     </tr>
                   ) : (
                     summary.boxes.map((box) => (
-                      <tr key={box.id} className="hover:bg-slate-50/50 transition-colors">
+                      <tr key={box.boxId} className="hover:bg-slate-50/50 transition-colors">
                         <td className="px-5 py-3.5 font-mono text-sm font-semibold text-slate-900">{box.boxCode}</td>
                         <td className="px-5 py-3.5 text-right text-sm tabular-nums text-slate-700">${box.revenue.toLocaleString()}</td>
                         <td className="px-5 py-3.5 text-right text-sm tabular-nums text-slate-700">${box.directExpenses.toLocaleString()}</td>

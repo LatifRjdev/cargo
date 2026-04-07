@@ -223,7 +223,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                   {searching ? <div className="h-4 w-4 animate-spin rounded-full border-2 border-slate-200 border-t-blue-600" /> : <kbd className="hidden lg:inline-flex items-center gap-0.5 rounded border border-slate-200 bg-white px-1.5 py-0.5 text-[10px] font-medium text-slate-400"><span className="text-xs">⌘</span>K</kbd>}
                 </form>
                 {openDropdown === 'search' && searchResults && (
-                  <div className="absolute left-0 top-full mt-2 w-96 bg-white rounded-2xl border border-slate-200 shadow-2xl max-h-80 overflow-y-auto">
+                  <div className="absolute left-0 top-full mt-2 w-96 max-w-[calc(100vw-2rem)] bg-white rounded-2xl border border-slate-200 shadow-2xl max-h-80 overflow-y-auto">
                     <div className="px-4 py-2.5 border-b border-slate-100 flex justify-between items-center">
                       <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Результаты</span>
                       <button onClick={() => { setOpenDropdown('none'); setSearchResults(null); setHeaderSearch(''); }} className="text-xs text-slate-400 hover:text-slate-600">{t.common.close}</button>
@@ -267,7 +267,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                   <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-red-500 ring-2 ring-white" />
                 </button>
                 {openDropdown === 'notifications' && (
-                  <div className="absolute right-0 top-full mt-2 w-80 bg-white rounded-2xl border border-slate-200 shadow-2xl">
+                  <div className="absolute right-0 top-full mt-2 w-80 max-w-[calc(100vw-2rem)] bg-white rounded-2xl border border-slate-200 shadow-2xl">
                     <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
                       <p className="text-sm font-semibold text-slate-900">Последние действия</p>
                       <button onClick={() => setOpenDropdown('none')} className="text-xs text-slate-400 hover:text-slate-600">{t.common.close}</button>

@@ -27,14 +27,14 @@ const scopeOptions = Object.entries(scopeLabels);
 
 interface Expense {
   id: string;
-  date: string;
+  createdAt: string;
   category: string;
   scope: string;
   description: string;
   amount: number;
   currency: string;
-  linkedBoxCode?: string;
-  linkedBatchCode?: string;
+  box?: { id: string; boxCode: string } | null;
+  batch?: { id: string; batchCode: string } | null;
 }
 
 export default function ExpensesPage() {
@@ -100,8 +100,8 @@ export default function ExpensesPage() {
     setFormAmount(expense.amount.toString());
     setFormCurrency(expense.currency);
     setFormDescription(expense.description);
-    setFormBoxCode(expense.linkedBoxCode || '');
-    setFormBatchCode(expense.linkedBatchCode || '');
+    setFormBoxCode(expense.box?.boxCode || '');
+    setFormBatchCode(expense.batch?.batchCode || '');
     setFormPeriodFrom('');
     setFormPeriodTo('');
     setError('');
@@ -245,7 +245,7 @@ export default function ExpensesPage() {
                 expenses.map((exp) => (
                   <tr key={exp.id} className="hover:bg-slate-50/50 transition-colors">
                     <td className="px-5 py-3.5 text-slate-500 text-sm">
-                      {new Date(exp.date).toLocaleDateString('ru-RU')}
+                      {new Date(exp.createdAt).toLocaleDateString('ru-RU')}
                     </td>
                     <td className="px-5 py-3.5 text-sm font-medium text-slate-700">{categoryLabels[exp.category] || exp.category}</td>
                     <td className="px-5 py-3.5">
@@ -258,7 +258,7 @@ export default function ExpensesPage() {
                       {exp.amount.toLocaleString()} {exp.currency}
                     </td>
                     <td className="px-5 py-3.5 text-xs text-slate-400 font-mono">
-                      {exp.linkedBoxCode || exp.linkedBatchCode || '—'}
+                      {exp.box?.boxCode || exp.batch?.batchCode || '—'}
                     </td>
                     <td className="px-5 py-3.5 text-right">
                       <div className="flex items-center justify-end gap-1.5">
