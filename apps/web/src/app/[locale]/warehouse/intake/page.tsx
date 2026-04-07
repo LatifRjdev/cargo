@@ -7,6 +7,7 @@ import { useAuth } from '@/lib/auth-context';
 import { useI18n } from '@/lib/i18n-context';
 
 const QrScanner = dynamic(() => import('@/components/qr-scanner'), { ssr: false });
+const BarcodeScanner = dynamic(() => import('@/components/barcode-scanner'), { ssr: false });
 
 const marketplaces = ['Taobao', '1688', 'Pinduoduo', 'Poizon', 'Другое'];
 const categories = [
@@ -50,6 +51,7 @@ export default function IntakePage() {
   const [damaged, setDamaged] = useState(false);
   const [damageDescription, setDamageDescription] = useState('');
   const [showScanner, setShowScanner] = useState(false);
+  const [showBarcodeScanner, setShowBarcodeScanner] = useState(false);
   const [photos, setPhotos] = useState<File[]>([]);
   const [photoPreviews, setPhotoPreviews] = useState<string[]>([]);
   const [uploadingPhotos, setUploadingPhotos] = useState(false);
@@ -60,6 +62,13 @@ export default function IntakePage() {
     const code = result.trim();
     setClientCode(code);
     if (code) setStep(2); // auto-advance
+  }, []);
+
+  const handleBarcodeScan = useCallback((result: string) => {
+    setShowBarcodeScanner(false);
+    const code = result.trim();
+    setClientCode(code);
+    if (code) setStep(2);
   }, []);
 
   const resetForm = () => {
@@ -247,6 +256,14 @@ export default function IntakePage() {
                   >
                     📷
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowBarcodeScanner(true)}
+                    className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs hover:bg-slate-100 transition-colors whitespace-nowrap"
+                    title="Сканировать штрих-код"
+                  >
+                    |||
+                  </button>
                 </div>
                 {showScanner && (
                   <QrScanner
@@ -254,6 +271,11 @@ export default function IntakePage() {
                     onClose={() => setShowScanner(false)}
                   />
                 )}
+                <BarcodeScanner
+                  open={showBarcodeScanner}
+                  onScan={handleBarcodeScan}
+                  onClose={() => setShowBarcodeScanner(false)}
+                />
               </div>
             ) : (
               <div>

@@ -1,6 +1,7 @@
 import { Injectable, Logger, Inject, Optional } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { EventsGateway } from '../ws/events.gateway';
+import { EmailService } from './email.service';
 
 const MAX_RETRIES = 3;
 const RETRY_DELAY_MS = 5000;
@@ -49,6 +50,7 @@ export class NotificationsService {
   constructor(
     private prisma: PrismaService,
     @Optional() @Inject(EventsGateway) private ws?: EventsGateway,
+    @Optional() @Inject(EmailService) private email?: EmailService,
   ) {}
 
   formatMessage(event: string, lang: Lang, ...args: string[]): string {
@@ -86,6 +88,15 @@ export class NotificationsService {
         message,
         createdAt: notification.createdAt,
       });
+    }
+
+    // Fire-and-forget email delivery
+    if (this.email) {
+      const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { email: true } });
+      if (user?.email) {
+        const { subject, html } = this.email.buildNotificationEmail(event, message);
+        this.email.send(user.email, subject, html).catch(() => {});
+      }
     }
 
     // Fire-and-forget Telegram delivery with retry
