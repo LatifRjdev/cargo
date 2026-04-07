@@ -3,7 +3,7 @@
   "version": "0.0.1",
   "private": true,
   "scripts": {
-    "build": "tsc -p tsconfig.build.json",
+    "build": "tsc -p tsconfig.build.json && echo '=== dist contents ===' && ls -la dist/ && ls dist/main.js",
     "dev": "nest start --watch",
     "start": "node dist/main",
     "start:prod": "node dist/main",
