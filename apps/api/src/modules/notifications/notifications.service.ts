@@ -1,5 +1,6 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Inject, Optional } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { EventsGateway } from '../ws/events.gateway';
 
 const MAX_RETRIES = 3;
 const RETRY_DELAY_MS = 5000;
@@ -45,7 +46,10 @@ const templates: Record<string, Record<Lang, (...args: string[]) => string>> = {
 export class NotificationsService {
   private readonly logger = new Logger(NotificationsService.name);
 
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    @Optional() @Inject(EventsGateway) private ws?: EventsGateway,
+  ) {}
 
   formatMessage(event: string, lang: Lang, ...args: string[]): string {
     const tpl = templates[event];
@@ -74,7 +78,17 @@ export class NotificationsService {
       },
     });
 
-    // Fire-and-forget delivery with retry
+    // Emit via WebSocket (real-time to browser)
+    if (this.ws) {
+      this.ws.sendToUser(userId, 'notification', {
+        id: notification.id,
+        event,
+        message,
+        createdAt: notification.createdAt,
+      });
+    }
+
+    // Fire-and-forget Telegram delivery with retry
     this.deliver(notification.id, userId, message).catch((err) => {
       this.logger.error(`Failed to deliver notification ${notification.id}: ${err.message}`);
     });

@@ -18,6 +18,7 @@ import { PdfModule } from './modules/pdf/pdf.module';
 import { AdminModule } from './modules/admin/admin.module';
 import { CronModule } from './modules/cron/cron.module';
 import { UploadModule } from './modules/upload/upload.module';
+import { WsModule } from './modules/ws/ws.module';
 import { PartnersModule } from './modules/partners/partners.module';
 
 @Module({

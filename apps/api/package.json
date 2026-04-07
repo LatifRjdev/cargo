@@ -20,8 +20,10 @@
     "@nestjs/jwt": "^11",
     "@nestjs/passport": "^11",
     "@nestjs/platform-express": "^11.1.17",
+    "@nestjs/platform-socket.io": "^11.1.18",
     "@nestjs/schedule": "^6.1.1",
     "@nestjs/swagger": "^11",
+    "@nestjs/websockets": "^11.1.18",
     "@prisma/client": "^6",
     "@types/multer": "^2.1.0",
     "@types/pdfkit": "^0.17.5",
@@ -36,7 +38,8 @@
     "pdfkit": "^0.18.0",
     "qrcode": "^1",
     "reflect-metadata": "^0.2",
-    "rxjs": "^7"
+    "rxjs": "^7",
+    "socket.io": "^4.8.3"
   },
   "devDependencies": {
     "@nestjs/cli": "^11",
