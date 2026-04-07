@@ -17,7 +17,8 @@ interface Box {
 }
 
 interface BoxesResponse {
-  items: Box[];
+  items?: Box[];
+  data?: Box[];
   meta?: any;
 }
 
